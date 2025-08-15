@@ -1,11 +1,14 @@
 <?php
 // excel_backend.php
 
+require_once __DIR__ . '/Config.php';
+use App\Config\Config;
+
 // Configurazione database
-define('DB_HOST', 'localhost');
-define('DB_USER', 'your_username');
-define('DB_PASS', 'your_password');
-define('DB_NAME', 'excel_webapp');
+define('DB_HOST', Config::$db_host);
+define('DB_USER', Config::$db_username);
+define('DB_PASS', Config::$db_password);
+define('DB_NAME', Config::$db_name);
 
 // Headers CORS e JSON
 header('Content-Type: application/json');
@@ -306,4 +309,3 @@ try {
 		'message' => 'Errore server: ' . $e->getMessage()
 	]);
 }
-?>
