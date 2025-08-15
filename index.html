@@ -233,18 +233,94 @@
 
 		workbook.SheetNames.forEach((sheetName, index) => {
 			const worksheet = workbook.Sheets[sheetName];
-			data[sheetName] = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: false });
+
+			// Controlla se è una tabella pivot
+			const isPivot = detectPivotTable(worksheet);
+
+			try {
+				data[sheetName] = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: false });
+
+				// Se la conversione restituisce dati vuoti ma il foglio non è vuoto
+				if (data[sheetName].length === 0 && worksheet['!ref']) {
+					// Prova a estrarre i valori delle celle direttamente
+					data[sheetName] = extractCellValues(worksheet);
+				}
+			} catch (error) {
+				console.warn(`Errore nel processare il foglio ${sheetName}:`, error);
+				data[sheetName] = [['Errore nel caricamento del foglio']];
+			}
 
 			// Crea tab per il foglio
 			const tab = document.createElement('div');
 			tab.className = `sheet-tab ${index === 0 ? 'active' : ''}`;
-			tab.textContent = sheetName;
+			tab.textContent = sheetName + (isPivot ? ' (Pivot)' : '');
 			tab.onclick = () => switchSheet(index, sheetName);
+
+			// Aggiungi indicatore visivo per le pivot
+			if (isPivot) {
+				tab.style.fontStyle = 'italic';
+				tab.style.color = '#666';
+				tab.title = 'Questo foglio contiene una tabella pivot';
+			}
+
 			tabsContainer.appendChild(tab);
 		});
 
 		currentSheet = 0;
 		displaySheet(workbook.SheetNames[0]);
+	}
+
+	// Rileva se un foglio contiene una tabella pivot
+	function detectPivotTable(worksheet) {
+		// Le pivot table hanno spesso proprietà specifiche
+		if (worksheet['!pivots'] || worksheet['!tables']) {
+			return true;
+		}
+
+		// Controlla le celle per indicatori di pivot table
+		const range = worksheet['!ref'];
+		if (!range) return false;
+
+		const decoded = XLSX.utils.decode_range(range);
+		for (let row = decoded.s.r; row <= decoded.e.r; row++) {
+			for (let col = decoded.s.c; col <= decoded.e.c; col++) {
+				const cellAddress = XLSX.utils.encode_cell({r: row, c: col});
+				const cell = worksheet[cellAddress];
+				if (cell && cell.f && cell.f.includes('PIVOT')) {
+					return true;
+				}
+			}
+		}
+
+		return false;
+	}
+
+	// Estrae i valori delle celle direttamente
+	function extractCellValues(worksheet) {
+		const result = [];
+		const range = worksheet['!ref'];
+		if (!range) return result;
+
+		const decoded = XLSX.utils.decode_range(range);
+
+		for (let row = decoded.s.r; row <= decoded.e.r; row++) {
+			const rowData = [];
+			for (let col = decoded.s.c; col <= decoded.e.c; col++) {
+				const cellAddress = XLSX.utils.encode_cell({r: row, c: col});
+				const cell = worksheet[cellAddress];
+
+				let cellValue = '';
+				if (cell) {
+					// Prova prima il valore formattato, poi quello raw
+					cellValue = cell.w || cell.v || '';
+				}
+
+				rowData[col] = cellValue;
+			}
+			result[row] = rowData;
+		}
+
+		return result;
 	}
 
 	// Cambia foglio

@@ -37,39 +37,79 @@ class ExcelDatabase {
 	}
 
 	public function initDatabase() {
-		$sql = "
-        CREATE TABLE IF NOT EXISTS excel_documents (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            title VARCHAR(255) NOT NULL DEFAULT 'Documento Excel',
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-        ) ENGINE=InnoDB;
+		try {
+			// Crea le tabelle una per volta per gestire meglio gli errori
+			$tables = [
+				"CREATE TABLE IF NOT EXISTS excel_documents (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    title VARCHAR(255) NOT NULL DEFAULT 'Documento Excel',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    INDEX idx_updated (updated_at)
+                ) ENGINE=InnoDB",
 
-        CREATE TABLE IF NOT EXISTS excel_sheets (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            document_id INT NOT NULL,
-            sheet_name VARCHAR(100) NOT NULL,
-            sheet_order INT NOT NULL DEFAULT 0,
-            FOREIGN KEY (document_id) REFERENCES excel_documents(id) ON DELETE CASCADE,
-            UNIQUE KEY unique_sheet (document_id, sheet_name)
-        ) ENGINE=InnoDB;
+				"CREATE TABLE IF NOT EXISTS excel_sheets (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    document_id INT NOT NULL,
+                    sheet_name VARCHAR(100) NOT NULL,
+                    sheet_order INT NOT NULL DEFAULT 0,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    INDEX idx_document (document_id),
+                    INDEX idx_order (document_id, sheet_order),
+                    UNIQUE KEY unique_sheet (document_id, sheet_name)
+                ) ENGINE=InnoDB",
 
-        CREATE TABLE IF NOT EXISTS excel_cells (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            sheet_id INT NOT NULL,
-            row_index INT NOT NULL,
-            col_index INT NOT NULL,
-            cell_value TEXT,
-            cell_type ENUM('string', 'number', 'formula', 'boolean', 'date') DEFAULT 'string',
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-            FOREIGN KEY (sheet_id) REFERENCES excel_sheets(id) ON DELETE CASCADE,
-            UNIQUE KEY unique_cell (sheet_id, row_index, col_index)
-        ) ENGINE=InnoDB;
+				"CREATE TABLE IF NOT EXISTS excel_cells (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    sheet_id INT NOT NULL,
+                    row_index INT NOT NULL,
+                    col_index INT NOT NULL,
+                    cell_value TEXT,
+                    cell_type ENUM('string', 'number', 'formula', 'boolean', 'date', 'empty') DEFAULT 'string',
+                    cell_format VARCHAR(50) DEFAULT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    INDEX idx_cells_position (sheet_id, row_index, col_index),
+                    UNIQUE KEY unique_cell (sheet_id, row_index, col_index)
+                ) ENGINE=InnoDB"
+			];
 
-        CREATE INDEX idx_cells_position ON excel_cells(sheet_id, row_index, col_index);
-        ";
+			foreach ($tables as $sql) {
+				$this->pdo->exec($sql);
+			}
 
-		$this->pdo->exec($sql);
+			// Aggiungi foreign keys dopo aver creato le tabelle
+			$this->addForeignKeys();
+
+		} catch (PDOException $e) {
+			// Se l'errore è per chiave duplicata, ignora (tabelle già esistenti)
+			if (strpos($e->getMessage(), 'Duplicate key name') === false) {
+				throw $e;
+			}
+		}
+	}
+
+	private function addForeignKeys() {
+		$foreignKeys = [
+			"ALTER TABLE excel_sheets ADD CONSTRAINT fk_sheets_document 
+             FOREIGN KEY (document_id) REFERENCES excel_documents(id) ON DELETE CASCADE",
+
+			"ALTER TABLE excel_cells ADD CONSTRAINT fk_cells_sheet 
+             FOREIGN KEY (sheet_id) REFERENCES excel_sheets(id) ON DELETE CASCADE"
+		];
+
+		foreach ($foreignKeys as $sql) {
+			try {
+				$this->pdo->exec($sql);
+			} catch (PDOException $e) {
+				// Ignora se la foreign key esiste già
+				if (strpos($e->getMessage(), 'Duplicate foreign key constraint name') === false &&
+					strpos($e->getMessage(), 'already exists') === false) {
+					// Log l'errore ma continua
+					error_log("Warning: " . $e->getMessage());
+				}
+			}
+		}
 	}
 
 	public function saveDocument($documentId, $data, $sheetNames) {
