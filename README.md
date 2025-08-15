@@ -1,5 +1,7 @@
 # data.ods.adios.google
 
+Gestisce un file excel online, senza dipendere da google o microsoft, DB indipendente
+
 ## Config
 
 ```Config.php```
