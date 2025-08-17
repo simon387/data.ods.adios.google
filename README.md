@@ -2,6 +2,10 @@
 
 Gestisce un file excel online, senza dipendere da google o microsoft, DB indipendente
 
+## info
+
++ nel ```index.html``` alcune funzioni sono commentate, è stato riadattato per un uso personale specifico.
+
 ## Config
 
 ```Config.php```

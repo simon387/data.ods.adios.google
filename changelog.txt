@@ -1,1 +1,5 @@
+Version 1.0.1
+
+- Commented out options
+
 Version 1.0.0 Alpha
