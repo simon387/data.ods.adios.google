@@ -36,6 +36,9 @@ jobs:
           server-dir: x/
           timeout: 600000
           log-level: verbose
+          passive: true
+          prefer-ipv4: true    # <--- forza IPv4
+
 
       - name: Wait between deployments
         run: sleep 10
