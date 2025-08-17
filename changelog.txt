@@ -1,5 +1,8 @@
-Version 1.0.1
+Version 1.0.2
+- implemented back up system
+- replaces comments with display:non
 
+Version 1.0.1
 - Commented out options
 
 Version 1.0.0 Alpha

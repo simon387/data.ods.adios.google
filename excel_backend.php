@@ -78,6 +78,9 @@ class ExcelDatabase {
 				$this->pdo->exec($sql);
 			}
 
+			// Migra la struttura per il versioning
+			$this->migrateToVersioning();
+
 			// Aggiungi foreign keys dopo aver creato le tabelle
 			$this->addForeignKeys();
 
@@ -86,6 +89,51 @@ class ExcelDatabase {
 			if (strpos($e->getMessage(), 'Duplicate key name') === false) {
 				throw $e;
 			}
+		}
+	}
+
+	private function migrateToVersioning() {
+		try {
+			// Controlla se le colonne di versioning esistono già
+			$stmt = $this->pdo->query("DESCRIBE excel_documents");
+			$columns = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+			$hasVersion = in_array('version', $columns);
+			$hasCurrent = in_array('is_current', $columns);
+
+			// Aggiungi le colonne se non esistono
+			if (!$hasVersion) {
+				$this->pdo->exec("ALTER TABLE excel_documents ADD COLUMN version INT NOT NULL DEFAULT 1");
+			}
+
+			if (!$hasCurrent) {
+				$this->pdo->exec("ALTER TABLE excel_documents ADD COLUMN is_current BOOLEAN DEFAULT TRUE");
+			}
+
+			// Crea gli indici se non esistono
+			if ($hasVersion && $hasCurrent) {
+				try {
+					$this->pdo->exec("CREATE INDEX idx_current ON excel_documents (is_current, updated_at)");
+				} catch (PDOException $e) {
+					// Indice già esistente, ignora
+				}
+
+				try {
+					$this->pdo->exec("CREATE INDEX idx_version ON excel_documents (title, version)");
+				} catch (PDOException $e) {
+					// Indice già esistente, ignora
+				}
+			}
+
+			// Se abbiamo appena aggiunto le colonne, inizializza i dati esistenti
+			if (!$hasVersion || !$hasCurrent) {
+				// Marca tutti i documenti esistenti come versione 1 e correnti
+				$this->pdo->exec("UPDATE excel_documents SET version = 1, is_current = TRUE WHERE version IS NULL OR is_current IS NULL");
+			}
+
+		} catch (PDOException $e) {
+			// Log dell'errore ma continua
+			error_log("Migration warning: " . $e->getMessage());
 		}
 	}
 
@@ -112,28 +160,44 @@ class ExcelDatabase {
 		}
 	}
 
-	public function saveDocument($documentId, $data, $sheetNames) {
+	public function saveDocument($documentId, $data, $sheetNames, $title = null) {
 		try {
 			$this->pdo->beginTransaction();
 
-			// Crea o aggiorna documento
-			if (!$documentId) {
-				$stmt = $this->pdo->prepare("INSERT INTO excel_documents (title) VALUES (?)");
-				$stmt->execute(['Documento Excel ' . date('Y-m-d H:i:s')]);
-				$documentId = $this->pdo->lastInsertId();
-			} else {
-				$stmt = $this->pdo->prepare("UPDATE excel_documents SET updated_at = NOW() WHERE id = ?");
+			if ($documentId) {
+				// Carica il documento esistente per ottenere il titolo base
+				$stmt = $this->pdo->prepare("SELECT title, version FROM excel_documents WHERE id = ?");
 				$stmt->execute([$documentId]);
+				$existingDoc = $stmt->fetch();
+
+				if (!$existingDoc) {
+					throw new Exception("Documento non trovato");
+				}
+
+				$baseTitle = $title ?: $existingDoc['title'];
+				$nextVersion = $existingDoc['version'] + 1;
+
+				// Marca il documento corrente come non più attuale
+				$stmt = $this->pdo->prepare("UPDATE excel_documents SET is_current = FALSE WHERE id = ?");
+				$stmt->execute([$documentId]);
+
+				// Crea una nuova versione
+				$stmt = $this->pdo->prepare("INSERT INTO excel_documents (title, version, is_current) VALUES (?, ?, TRUE)");
+				$stmt->execute([$baseTitle, $nextVersion]);
+				$newDocumentId = $this->pdo->lastInsertId();
+
+			} else {
+				// Nuovo documento
+				$baseTitle = $title ?: 'Documento Excel ' . date('Y-m-d H:i:s');
+				$stmt = $this->pdo->prepare("INSERT INTO excel_documents (title, version, is_current) VALUES (?, 1, TRUE)");
+				$stmt->execute([$baseTitle]);
+				$newDocumentId = $this->pdo->lastInsertId();
 			}
 
-			// Elimina fogli esistenti per aggiornare
-			$stmt = $this->pdo->prepare("DELETE FROM excel_sheets WHERE document_id = ?");
-			$stmt->execute([$documentId]);
-
-			// Salva i fogli
+			// Salva i fogli nella nuova versione
 			foreach ($sheetNames as $order => $sheetName) {
 				$stmt = $this->pdo->prepare("INSERT INTO excel_sheets (document_id, sheet_name, sheet_order) VALUES (?, ?, ?)");
-				$stmt->execute([$documentId, $sheetName, $order]);
+				$stmt->execute([$newDocumentId, $sheetName, $order]);
 				$sheetId = $this->pdo->lastInsertId();
 
 				// Salva le celle del foglio
@@ -143,7 +207,7 @@ class ExcelDatabase {
 			}
 
 			$this->pdo->commit();
-			return ['success' => true, 'documentId' => $documentId];
+			return ['success' => true, 'documentId' => $newDocumentId];
 
 		} catch (Exception $e) {
 			$this->pdo->rollBack();
@@ -155,10 +219,6 @@ class ExcelDatabase {
 		$stmt = $this->pdo->prepare("
             INSERT INTO excel_cells (sheet_id, row_index, col_index, cell_value, cell_type) 
             VALUES (?, ?, ?, ?, ?)
-            ON DUPLICATE KEY UPDATE 
-                cell_value = VALUES(cell_value),
-                cell_type = VALUES(cell_type),
-                updated_at = NOW()
         ");
 
 		foreach ($sheetData as $rowIndex => $row) {
@@ -186,16 +246,52 @@ class ExcelDatabase {
 		return 'string';
 	}
 
-	public function loadDocument($documentId = null) {
+	public function loadDocument($documentId = null, $version = null) {
 		try {
-			// Se non è specificato un ID, carica l'ultimo documento
+			// Se non è specificato un ID, carica l'ultimo documento corrente
 			if (!$documentId) {
-				$stmt = $this->pdo->query("SELECT id FROM excel_documents ORDER BY updated_at DESC LIMIT 1");
+				// Controlla prima se la colonna is_current esiste
+				$stmt = $this->pdo->query("DESCRIBE excel_documents");
+				$columns = $stmt->fetchAll(PDO::FETCH_COLUMN);
+				$hasCurrent = in_array('is_current', $columns);
+
+				if ($hasCurrent) {
+					$stmt = $this->pdo->query("SELECT id FROM excel_documents WHERE is_current = TRUE ORDER BY updated_at DESC LIMIT 1");
+				} else {
+					$stmt = $this->pdo->query("SELECT id FROM excel_documents ORDER BY updated_at DESC LIMIT 1");
+				}
+
 				$doc = $stmt->fetch();
 				if (!$doc) {
 					return ['success' => false, 'message' => 'Nessun documento trovato'];
 				}
 				$documentId = $doc['id'];
+			} elseif ($version) {
+				// Cerca una versione specifica per titolo
+				$stmt = $this->pdo->prepare("SELECT id FROM excel_documents WHERE title = (SELECT title FROM excel_documents WHERE id = ?) AND version = ?");
+				$stmt->execute([$documentId, $version]);
+				$doc = $stmt->fetch();
+				if ($doc) {
+					$documentId = $doc['id'];
+				}
+			}
+
+			// Carica informazioni documento - gestisci colonne che potrebbero non esistere
+			$stmt = $this->pdo->query("DESCRIBE excel_documents");
+			$columns = $stmt->fetchAll(PDO::FETCH_COLUMN);
+			$hasVersion = in_array('version', $columns);
+			$hasCurrent = in_array('is_current', $columns);
+
+			$selectFields = "title";
+			if ($hasVersion) $selectFields .= ", version";
+			if ($hasCurrent) $selectFields .= ", is_current";
+
+			$stmt = $this->pdo->prepare("SELECT {$selectFields} FROM excel_documents WHERE id = ?");
+			$stmt->execute([$documentId]);
+			$docInfo = $stmt->fetch();
+
+			if (!$docInfo) {
+				return ['success' => false, 'message' => 'Documento non trovato'];
 			}
 
 			// Carica i fogli
@@ -204,7 +300,7 @@ class ExcelDatabase {
 			$sheets = $stmt->fetchAll();
 
 			if (empty($sheets)) {
-				return ['success' => false, 'message' => 'Documento non trovato'];
+				return ['success' => false, 'message' => 'Documento vuoto'];
 			}
 
 			$data = [];
@@ -215,12 +311,23 @@ class ExcelDatabase {
 				$data[$sheet['sheet_name']] = $this->loadSheetData($sheet['id']);
 			}
 
-			return [
+			$result = [
 				'success' => true,
 				'documentId' => $documentId,
+				'title' => $docInfo['title'],
 				'data' => $data,
 				'sheetNames' => $sheetNames
 			];
+
+			// Aggiungi campi versioning solo se esistono
+			if ($hasVersion) {
+				$result['version'] = $docInfo['version'] ?? 1;
+			}
+			if ($hasCurrent) {
+				$result['isCurrent'] = $docInfo['is_current'] ?? true;
+			}
+
+			return $result;
 
 		} catch (Exception $e) {
 			return ['success' => false, 'message' => $e->getMessage()];
@@ -260,13 +367,34 @@ class ExcelDatabase {
 		return $result;
 	}
 
-	public function getDocumentsList() {
-		$stmt = $this->pdo->query("
-            SELECT id, title, created_at, updated_at,
-                   (SELECT COUNT(*) FROM excel_sheets WHERE document_id = excel_documents.id) as sheet_count
-            FROM excel_documents 
-            ORDER BY updated_at DESC
-        ");
+	public function getDocumentsList($includeVersions = false) {
+		// Controlla se le colonne di versioning esistono
+		$stmt = $this->pdo->query("DESCRIBE excel_documents");
+		$columns = $stmt->fetchAll(PDO::FETCH_COLUMN);
+		$hasVersion = in_array('version', $columns);
+		$hasCurrent = in_array('is_current', $columns);
+
+		$selectFields = "id, title, created_at, updated_at, (SELECT COUNT(*) FROM excel_sheets WHERE document_id = excel_documents.id) as sheet_count";
+		if ($hasVersion) $selectFields .= ", version";
+		if ($hasCurrent) $selectFields .= ", is_current";
+
+		if ($includeVersions || !$hasCurrent) {
+			// Restituisce tutte le versioni
+			$orderBy = $hasVersion ? "title, version DESC" : "updated_at DESC";
+			$stmt = $this->pdo->query("
+                SELECT {$selectFields}
+                FROM excel_documents 
+                ORDER BY {$orderBy}
+            ");
+		} else {
+			// Restituisce solo le versioni correnti
+			$stmt = $this->pdo->query("
+                SELECT {$selectFields}
+                FROM excel_documents 
+                WHERE is_current = TRUE
+                ORDER BY updated_at DESC
+            ");
+		}
 
 		return [
 			'success' => true,
@@ -274,14 +402,100 @@ class ExcelDatabase {
 		];
 	}
 
-	public function deleteDocument($documentId) {
-		try {
-			$stmt = $this->pdo->prepare("DELETE FROM excel_documents WHERE id = ?");
-			$stmt->execute([$documentId]);
+	public function getDocumentVersions($title) {
+		$stmt = $this->pdo->prepare("
+            SELECT id, version, is_current, created_at, updated_at,
+                   (SELECT COUNT(*) FROM excel_sheets WHERE document_id = excel_documents.id) as sheet_count
+            FROM excel_documents 
+            WHERE title = ?
+            ORDER BY version DESC
+        ");
+		$stmt->execute([$title]);
 
+		return [
+			'success' => true,
+			'versions' => $stmt->fetchAll()
+		];
+	}
+
+	public function deleteDocument($documentId, $deleteAllVersions = false) {
+		try {
+			$this->pdo->beginTransaction();
+
+			if ($deleteAllVersions) {
+				// Elimina tutte le versioni del documento
+				$stmt = $this->pdo->prepare("SELECT title FROM excel_documents WHERE id = ?");
+				$stmt->execute([$documentId]);
+				$doc = $stmt->fetch();
+
+				if ($doc) {
+					$stmt = $this->pdo->prepare("DELETE FROM excel_documents WHERE title = ?");
+					$stmt->execute([$doc['title']]);
+				}
+			} else {
+				// Elimina solo questa versione
+				$stmt = $this->pdo->prepare("DELETE FROM excel_documents WHERE id = ?");
+				$stmt->execute([$documentId]);
+
+				// Se abbiamo eliminato la versione corrente, marca la versione precedente come corrente
+				$stmt = $this->pdo->prepare("
+                    SELECT title FROM excel_documents 
+                    WHERE id = ? AND is_current = TRUE
+                ");
+				$stmt->execute([$documentId]);
+				$wasCurrentDoc = $stmt->fetch();
+
+				if ($wasCurrentDoc) {
+					$stmt = $this->pdo->prepare("
+                        UPDATE excel_documents 
+                        SET is_current = TRUE 
+                        WHERE title = ? AND id = (
+                            SELECT id FROM (
+                                SELECT id FROM excel_documents 
+                                WHERE title = ? 
+                                ORDER BY version DESC 
+                                LIMIT 1
+                            ) as subq
+                        )
+                    ");
+					$stmt->execute([$wasCurrentDoc['title'], $wasCurrentDoc['title']]);
+				}
+			}
+
+			$this->pdo->commit();
 			return [
 				'success' => true,
 				'message' => 'Documento eliminato con successo'
+			];
+		} catch (Exception $e) {
+			$this->pdo->rollBack();
+			return [
+				'success' => false,
+				'message' => $e->getMessage()
+			];
+		}
+	}
+
+	public function cleanOldVersions($title, $keepVersions = 10) {
+		try {
+			// Mantiene solo le ultime N versioni di un documento
+			$stmt = $this->pdo->prepare("
+                DELETE FROM excel_documents 
+                WHERE title = ? 
+                AND id NOT IN (
+                    SELECT id FROM (
+                        SELECT id FROM excel_documents 
+                        WHERE title = ? 
+                        ORDER BY version DESC 
+                        LIMIT ?
+                    ) as keep_versions
+                )
+            ");
+			$stmt->execute([$title, $title, $keepVersions]);
+
+			return [
+				'success' => true,
+				'message' => "Mantenute le ultime {$keepVersions} versioni"
 			];
 		} catch (Exception $e) {
 			return [
@@ -306,11 +520,22 @@ try {
 		switch ($action) {
 			case 'load':
 				$documentId = $_GET['documentId'] ?? null;
-				echo json_encode($db->loadDocument($documentId));
+				$version = $_GET['version'] ?? null;
+				echo json_encode($db->loadDocument($documentId, $version));
 				break;
 
 			case 'list':
-				echo json_encode($db->getDocumentsList());
+				$includeVersions = isset($_GET['includeVersions']) && $_GET['includeVersions'] === 'true';
+				echo json_encode($db->getDocumentsList($includeVersions));
+				break;
+
+			case 'versions':
+				$title = $_GET['title'] ?? '';
+				if ($title) {
+					echo json_encode($db->getDocumentVersions($title));
+				} else {
+					echo json_encode(['success' => false, 'message' => 'Titolo richiesto']);
+				}
 				break;
 
 			default:
@@ -325,16 +550,28 @@ try {
 				$documentId = $input['documentId'] ?? null;
 				$data = $input['data'] ?? [];
 				$sheetNames = $input['sheetNames'] ?? [];
+				$title = $input['title'] ?? null;
 
-				echo json_encode($db->saveDocument($documentId, $data, $sheetNames));
+				echo json_encode($db->saveDocument($documentId, $data, $sheetNames, $title));
 				break;
 
 			case 'delete':
 				$documentId = $input['documentId'] ?? null;
+				$deleteAllVersions = $input['deleteAllVersions'] ?? false;
 				if ($documentId) {
-					echo json_encode($db->deleteDocument($documentId));
+					echo json_encode($db->deleteDocument($documentId, $deleteAllVersions));
 				} else {
 					echo json_encode(['success' => false, 'message' => 'ID documento richiesto']);
+				}
+				break;
+
+			case 'cleanup':
+				$title = $input['title'] ?? '';
+				$keepVersions = $input['keepVersions'] ?? 10;
+				if ($title) {
+					echo json_encode($db->cleanOldVersions($title, $keepVersions));
+				} else {
+					echo json_encode(['success' => false, 'message' => 'Titolo richiesto']);
 				}
 				break;
 
