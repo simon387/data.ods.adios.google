@@ -20,41 +20,30 @@ jobs:
           echo "Files that will be deployed:"
           find . -type f -name "*.html" -o -name "*.css" -o -name "*.js" -o -name "*.php" -o -name "*.txt" | grep -v "/.git" | sort
 
-      - name: 🔧 Setup deployment retry strategy
-        id: deploy
+      - name: 📂 Deploy with primary strategy
         uses: nick-fields/retry@v3
         with:
           timeout_minutes: 15
-          max_attempts: 5
+          max_attempts: 3
           retry_wait_seconds: 30
-          retry_on: error
-          shell: bash
           command: |
-            echo "🚀 Attempting FTP deployment (Attempt ${{ strategy.job-index + 1 }})"
-            
-            # Strategia 1: FTP Standard con IPv4 forzato
-            if [ "${{ strategy.job-index }}" -eq "0" ]; then
-              echo "📡 Trying standard FTP with IPv4"
-              docker run --rm \
-                -v ${{ github.workspace }}:/workspace \
-                -e FTP_SERVER="${{ secrets.ftp_server }}" \
-                -e FTP_USERNAME="${{ secrets.ftp_username }}" \
-                -e FTP_PASSWORD="${{ secrets.ftp_password }}" \
-                -e SERVER_DIR="x/" \
-                samkirkland/ftp-deploy:latest \
-                --server="${{ secrets.ftp_server }}" \
-                --username="${{ secrets.ftp_username }}" \
-                --password="${{ secrets.ftp_password }}" \
-                --server-dir="x/" \
-                --exclude="**/.git*,**/.git*/**,**/sql/**,README.md,Config.php" \
-                --timeout=300000 \
-                --log-level=verbose \
-                --prefer-ipv4=true \
-                --passive=true
-            fi
+            echo "🚀 Attempting FTP deployment"
+            # Usa l'action FTP deploy con configurazioni ottimizzate
+            docker run --rm \
+              -v "${{ github.workspace }}:/github/workspace" \
+              -e INPUT_SERVER="${{ secrets.ftp_server }}" \
+              -e INPUT_USERNAME="${{ secrets.ftp_username }}" \
+              -e INPUT_PASSWORD="${{ secrets.ftp_password }}" \
+              -e INPUT_SERVER_DIR="x/" \
+              -e INPUT_TIMEOUT="300000" \
+              -e INPUT_LOG_LEVEL="verbose" \
+              -e INPUT_PREFER_IPV4="true" \
+              -e INPUT_PASSIVE="true" \
+              -e INPUT_EXCLUDE="**/.git*,**/.git*/**,**/sql/**,README.md,Config.php,.github/**" \
+              samkirkland/ftp-deploy-action:4.3.5
 
-      - name: 📂 Deploy with primary strategy
-        if: steps.deploy.outcome != 'success'
+      - name: 📂 Fallback: Standard FTP Deploy
+        if: failure()
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
           server: ${{ secrets.ftp_server }}
@@ -75,7 +64,7 @@ jobs:
             .gitignore
             *.md
 
-      - name: 📂 Fallback: Deploy with FTPS
+      - name: 📂 Fallback: FTPS Deploy
         if: failure()
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
@@ -142,24 +131,6 @@ jobs:
           echo "- Use cPanel File Manager"
           echo "- Use hosting provider's deployment tools"
 
-      - name: 📝 Create deployment report
-        if: always()
-        run: |
-          echo "# 📊 Deployment Report" > deployment-report.md
-          echo "" >> deployment-report.md
-          echo "**Date:** $(date)" >> deployment-report.md
-          echo "**Repository:** ${{ github.repository }}" >> deployment-report.md
-          echo "**Branch:** ${{ github.ref_name }}" >> deployment-report.md
-          echo "**Commit:** ${{ github.sha }}" >> deployment-report.md
-          echo "**Status:** ${{ job.status }}" >> deployment-report.md
-          echo "**Server:** ${{ secrets.ftp_server }}" >> deployment-report.md
-          echo "" >> deployment-report.md
-          if [ "${{ job.status }}" == "success" ]; then
-            echo "✅ **Result:** Deployment completed successfully!" >> deployment-report.md
-          else
-            echo "❌ **Result:** Deployment failed. Check logs for details." >> deployment-report.md
-          fi
-
   # Job separato per testare la connettività
   connectivity-test:
     name: 🔌 Test Server Connectivity
@@ -167,26 +138,16 @@ jobs:
     steps:
       - name: 🏓 Ping server
         run: |
-          echo "Testing connectivity to ${{ secrets.ftp_server }}"
-          ping -c 4 ${{ secrets.ftp_server }} || echo "Ping failed, but server might still be accessible"
+          echo "Testing connectivity to server"
+          # Test basic connectivity without revealing the server name in logs
+          timeout 10 bash -c "ping -c 2 ${{ secrets.ftp_server }}" || echo "Ping failed, but server might still be accessible"
 
       - name: 🔍 Check FTP port
         run: |
           echo "Testing FTP port 21 connectivity"
-          timeout 10 bash -c "</dev/tcp/${{ secrets.ftp_server }}/21" || echo "FTP port 21 not accessible"
+          timeout 10 bash -c "</dev/tcp/${{ secrets.ftp_server }}/21" && echo "FTP port 21 is accessible" || echo "FTP port 21 not accessible"
 
       - name: 🔍 Check SFTP port
         run: |
           echo "Testing SFTP port 22 connectivity"
-          timeout 10 bash -c "</dev/tcp/${{ secrets.ftp_server }}/22" || echo "SFTP port 22 not accessible"
-
-  # Job per pulizia cache in caso di problemi persistenti
-  cache-cleanup:
-    name: 🧹 Cache Cleanup
-    runs-on: ubuntu-latest
-    if: failure()
-    steps:
-      - name: Clear GitHub Actions cache
-        run: |
-          echo "If deployments keep failing, consider clearing the FTP sync state"
-          echo "This will force a complete re-upload on next deployment"
+          timeout 10 bash -c "</dev/tcp/${{ secrets.ftp_server }}/22" && echo "SFTP port 22 is accessible" || echo "SFTP port 22 not accessible"
