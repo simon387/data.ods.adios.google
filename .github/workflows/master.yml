@@ -3,7 +3,7 @@ name: 🚀 Deploy website on push
 on:
   push:
     branches: [ master, main ]
-  workflow_dispatch: # Permette esecuzione manuale
+  workflow_dispatch:
 
 jobs:
   deploy:
@@ -18,32 +18,18 @@ jobs:
       - name: 📋 List files to deploy
         run: |
           echo "Files that will be deployed:"
-          find . -type f -name "*.html" -o -name "*.css" -o -name "*.js" -o -name "*.php" -o -name "*.txt" | grep -v "/.git" | sort
+          find . -type f \( -name "*.html" -o -name "*.css" -o -name "*.js" -o -name "*.php" -o -name "*.txt" \) | grep -v "/.git" | sort
 
-      - name: 📂 Deploy with primary strategy
+      - name: 📂 Deploy with retry strategy
         uses: nick-fields/retry@v3
         with:
           timeout_minutes: 15
-          max_attempts: 3
+          max_attempts: 4
           retry_wait_seconds: 30
           command: |
-            echo "🚀 Attempting FTP deployment"
-            # Usa l'action FTP deploy con configurazioni ottimizzate
-            docker run --rm \
-              -v "${{ github.workspace }}:/github/workspace" \
-              -e INPUT_SERVER="${{ secrets.ftp_server }}" \
-              -e INPUT_USERNAME="${{ secrets.ftp_username }}" \
-              -e INPUT_PASSWORD="${{ secrets.ftp_password }}" \
-              -e INPUT_SERVER_DIR="x/" \
-              -e INPUT_TIMEOUT="300000" \
-              -e INPUT_LOG_LEVEL="verbose" \
-              -e INPUT_PREFER_IPV4="true" \
-              -e INPUT_PASSIVE="true" \
-              -e INPUT_EXCLUDE="**/.git*,**/.git*/**,**/sql/**,README.md,Config.php,.github/**" \
-              samkirkland/ftp-deploy-action:4.3.5
+            echo "🚀 Attempting FTP deployment (Attempt ${{ github.run_attempt }})"
 
-      - name: 📂 Fallback: Standard FTP Deploy
-        if: failure()
+      - name: 📁 Primary FTP Deploy
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
           server: ${{ secrets.ftp_server }}
@@ -64,7 +50,7 @@ jobs:
             .gitignore
             *.md
 
-      - name: 📂 Fallback: FTPS Deploy
+      - name: 📂 Fallback FTPS Deploy
         if: failure()
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
@@ -85,7 +71,7 @@ jobs:
             Config.php
             .github/**
 
-      - name: 📂 Ultimate fallback: SFTP Deploy
+      - name: 📂 Ultimate fallback SFTP
         if: failure()
         uses: wlixcc/SFTP-Deploy-Action@v1.2.4
         with:
@@ -98,11 +84,11 @@ jobs:
           sftp_only: true
           args: '-o ConnectTimeout=5'
 
-      - name: 🧹 Cleanup and verify
+      - name: 🧹 Success cleanup
         if: success()
         run: |
           echo "✅ Deployment completed successfully!"
-          echo "🔗 Files deployed to: ${{ secrets.ftp_server }}/x/"
+          echo "🔗 Files deployed to server/x/"
           echo "📊 Deployment stats:"
           echo "- Repository: ${{ github.repository }}"
           echo "- Branch: ${{ github.ref_name }}"
@@ -111,16 +97,14 @@ jobs:
 
       - name: 📧 Success notification
         if: success()
-        run: |
-          echo "🎉 Deployment successful!"
-          echo "Your Excel Web Editor has been deployed successfully."
+        run: echo "🎉 Your Excel Web Editor has been deployed successfully!"
 
       - name: 🚨 Failure analysis
         if: failure()
         run: |
           echo "❌ All deployment methods failed!"
           echo "🔍 Troubleshooting suggestions:"
-          echo "1. Check FTP server status: ${{ secrets.ftp_server }}"
+          echo "1. Check FTP server status"
           echo "2. Verify credentials are correct"
           echo "3. Check if server supports passive mode"
           echo "4. Try connecting manually to verify server availability"
@@ -129,25 +113,23 @@ jobs:
           echo "💡 Alternative deployment methods to try:"
           echo "- Use SFTP if available (port 22)"
           echo "- Use cPanel File Manager"
-          echo "- Use hosting provider's deployment tools"
+          echo "- Use hosting provider deployment tools"
 
-  # Job separato per testare la connettività
   connectivity-test:
     name: 🔌 Test Server Connectivity
     runs-on: ubuntu-latest
     steps:
-      - name: 🏓 Ping server
+      - name: 🏓 Test basic connectivity
         run: |
-          echo "Testing connectivity to server"
-          # Test basic connectivity without revealing the server name in logs
-          timeout 10 bash -c "ping -c 2 ${{ secrets.ftp_server }}" || echo "Ping failed, but server might still be accessible"
+          echo "Testing basic connectivity"
+          timeout 10 ping -c 2 ${{ secrets.ftp_server }} || echo "Direct ping failed"
 
-      - name: 🔍 Check FTP port
+      - name: 🔍 Check FTP port 21
         run: |
-          echo "Testing FTP port 21 connectivity"
-          timeout 10 bash -c "</dev/tcp/${{ secrets.ftp_server }}/21" && echo "FTP port 21 is accessible" || echo "FTP port 21 not accessible"
+          echo "Testing FTP port 21"
+          timeout 10 bash -c "</dev/tcp/${{ secrets.ftp_server }}/21" && echo "✅ FTP port 21 accessible" || echo "❌ FTP port 21 not accessible"
 
-      - name: 🔍 Check SFTP port
+      - name: 🔍 Check SFTP port 22
         run: |
-          echo "Testing SFTP port 22 connectivity"
-          timeout 10 bash -c "</dev/tcp/${{ secrets.ftp_server }}/22" && echo "SFTP port 22 is accessible" || echo "SFTP port 22 not accessible"
+          echo "Testing SFTP port 22"  
+          timeout 10 bash -c "</dev/tcp/${{ secrets.ftp_server }}/22" && echo "✅ SFTP port 22 accessible" || echo "❌ SFTP port 22 not accessible"
