@@ -153,8 +153,8 @@ function displaySheet(sheetName) {
 	if (!data[sheetName]) data[sheetName] = [[]];
 
 	const sheetData = data[sheetName];
-	const maxCols = Math.max(26, ...sheetData.map(row => row.length || 0));
-	const maxRows = Math.max(20, sheetData.length);
+	const maxCols = Math.max(8, ...sheetData.map(row => row.length || 0)); // 26
+	const maxRows = Math.max(64, sheetData.length);
 
 	let html = '<thead><tr><th></th>';
 	for (let col = 0; col < maxCols; col++) {
