@@ -26,4 +26,4 @@ class Config
 
 ## TODOS
 
-+ mobile non lascia modificare le celle
++ ~~mobile non lascia modificare le celle~~

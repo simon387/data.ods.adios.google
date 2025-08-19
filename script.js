@@ -6,6 +6,12 @@ let selectedCell = null;
 let documentId = null;
 let pendingAction = null;
 
+// Rileva se siamo su un dispositivo mobile
+function isMobile() {
+	return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+		(window.innerWidth <= 768 && 'ontouchstart' in window);
+}
+
 // Carica file Excel
 function loadFile(event) {
 	const file = event.target.files[0];
@@ -163,7 +169,11 @@ function displaySheet(sheetName) {
 
 		for (let col = 0; col < maxCols; col++) {
 			const cellValue = sheetData[row] && sheetData[row][col] ? sheetData[row][col] : '';
-			html += `<td class="cell" data-row="${row}" data-col="${col}" onclick="selectCell(this)" ondblclick="editCell(this)">${cellValue}</td>`;
+			// Su mobile usa solo onclick, su desktop mantieni ondblclick
+			const clickHandler = isMobile() ?
+				`onclick="selectCell(this)" ontouchstart="this.click()"` :
+				`onclick="selectCell(this)" ondblclick="editCell(this)"`;
+			html += `<td class="cell" data-row="${row}" data-col="${col}" ${clickHandler}>${cellValue}</td>`;
 		}
 		html += '</tr>';
 	}
@@ -172,12 +182,6 @@ function displaySheet(sheetName) {
 	table.innerHTML = html;
 	table.style.display = 'table';
 	loading.style.display = 'none';
-}
-
-// Rileva se siamo su un dispositivo mobile
-function isMobile() {
-	return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
-		(window.innerWidth <= 768 && 'ontouchstart' in window);
 }
 
 // Seleziona cella
@@ -190,7 +194,9 @@ function selectCell(cell) {
 
 	// Su mobile, entra automaticamente in modalità modifica
 	if (isMobile()) {
-		editCell(cell);
+		setTimeout(() => {
+			editCell(cell);
+		}, 100);
 	}
 }
 
@@ -201,22 +207,54 @@ function editCell(cell) {
 	input.type = 'text';
 	input.value = currentValue;
 
+	// Aggiungi attributi specifici per mobile
+	if (isMobile()) {
+		input.setAttribute('inputmode', 'text');
+		input.setAttribute('enterkeyhint', 'done');
+		input.style.fontSize = '16px'; // Previene lo zoom su iOS
+		input.style.padding = '8px';
+		input.style.border = '2px solid #007bff';
+		input.style.borderRadius = '4px';
+		input.style.width = '100%';
+		input.style.minHeight = '40px';
+	}
+
 	input.onblur = function () {
 		finishEdit(cell, input.value);
 	};
 
 	input.onkeydown = function (e) {
 		if (e.key === 'Enter') {
+			e.preventDefault();
+			input.blur(); // Su mobile, chiudi la tastiera
 			finishEdit(cell, input.value);
 		} else if (e.key === 'Escape') {
 			finishEdit(cell, currentValue);
 		}
 	};
 
+	// Aggiungi evento per il tasto "Done" su mobile
+	input.addEventListener('input', function(e) {
+		if (e.inputType === 'insertCompositionText' || e.inputType === 'insertText') {
+			// Aggiorna in tempo reale se necessario
+		}
+	});
+
 	cell.innerHTML = '';
 	cell.appendChild(input);
-	input.focus();
-	input.select();
+
+	// Focus e selezione con un piccolo delay per mobile
+	if (isMobile()) {
+		setTimeout(() => {
+			input.focus();
+			input.setSelectionRange(0, input.value.length);
+			// Forza l'apertura della tastiera su Android
+			input.click();
+		}, 150);
+	} else {
+		input.focus();
+		input.select();
+	}
 }
 
 // Completa modifica
