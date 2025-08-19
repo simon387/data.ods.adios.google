@@ -27,3 +27,4 @@ class Config
 ## TODOS
 
 + ~~mobile non lascia modificare le celle~~
++ meno colonne, più righe, specie mobile
