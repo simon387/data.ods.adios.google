@@ -17,7 +17,8 @@ window.addEventListener('error', function (e) {
 		div.style.zIndex = '99999';
 		div.textContent = "JS Error: " + e.message + " @ " + e.filename + ":" + e.lineno;
 		document.body.appendChild(div);
-	} catch (_) {}
+	} catch (_) {
+	}
 });
 
 window.addEventListener('unhandledrejection', function (e) {
@@ -34,7 +35,8 @@ window.addEventListener('unhandledrejection', function (e) {
 		div.style.zIndex = '99999';
 		div.textContent = "Promise Error: " + (e.reason && e.reason.message ? e.reason.message : e.reason);
 		document.body.appendChild(div);
-	} catch (_) {}
+	} catch (_) {
+	}
 });
 
 /* --------------------- Variabili globali --------------------- */
@@ -77,7 +79,7 @@ function loadFile(event) {
 	const reader = new FileReader();
 	reader.onload = function (e) {
 		try {
-			workbook = XLSX.read(e.target.result, { type: 'binary' });
+			workbook = XLSX.read(e.target.result, {type: 'binary'});
 			// Costruisci "data" da workbook
 			data = {};
 			const tabsContainer = document.getElementById('sheet-tabs');
@@ -87,7 +89,7 @@ function loadFile(event) {
 				const ws = workbook.Sheets[sheetName];
 				let arr = [];
 				try {
-					arr = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false });
+					arr = XLSX.utils.sheet_to_json(ws, {header: 1, raw: false});
 					if ((!arr || arr.length === 0) && ws['!ref']) {
 						arr = extractCellValues(ws);
 					}
@@ -124,7 +126,7 @@ function extractCellValues(worksheet) {
 	for (let r = decoded.s.r; r <= decoded.e.r; r++) {
 		const rowData = [];
 		for (let c = decoded.s.c; c <= decoded.e.c; c++) {
-			const cellAddress = XLSX.utils.encode_cell({ r, c });
+			const cellAddress = XLSX.utils.encode_cell({r, c});
 			const cell = worksheet[cellAddress];
 			let cellValue = '';
 			if (cell) cellValue = cell.w || cell.v || '';
@@ -182,7 +184,7 @@ function displaySheet(sheetName) {
 
 function escapeHtml(s) {
 	return String(s).replace(/[&<>"']/g, m =>
-		({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m])
+		({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'}[m])
 	);
 }
 
@@ -191,14 +193,14 @@ function attachCellListeners(table) {
 
 	cells.forEach((cell) => {
 		// Desktop: click selezione, doppio click edit
-		cell.addEventListener('click', () => selectCell(cell), { passive: true });
-		cell.addEventListener('dblclick', () => editCell(cell), { passive: true });
+		cell.addEventListener('click', () => selectCell(cell), {passive: true});
+		cell.addEventListener('dblclick', () => editCell(cell), {passive: true});
 
 		// Mobile: touchend -> seleziona + entra in edit con piccolo delay
 		cell.addEventListener('touchend', () => {
 			selectCell(cell);
 			setTimeout(() => editCell(cell), 0);
-		}, { passive: true });
+		}, {passive: true});
 	});
 }
 
@@ -222,7 +224,7 @@ function editCell(cell) {
 	if (isMobile()) {
 		// MOBILE: contenteditable = apertura tastiera più affidabile
 		cell.setAttribute('contenteditable', 'plaintext-only'); // fallback: 'true' se vecchio Safari
-		cell.focus({ preventScroll: true });
+		cell.focus({preventScroll: true});
 
 		// Seleziona tutto il testo al focus
 		requestAnimationFrame(() => {
@@ -232,7 +234,8 @@ function editCell(cell) {
 				const sel = window.getSelection();
 				sel.removeAllRanges();
 				sel.addRange(range);
-			} catch (_) {}
+			} catch (_) {
+			}
 		});
 
 		const onBlur = () => {
@@ -294,8 +297,11 @@ function editCell(cell) {
 		// Focus dopo il reflow per compat mobile/desktop
 		requestAnimationFrame(() => {
 			requestAnimationFrame(() => {
-				input.focus({ preventScroll: true });
-				try { input.setSelectionRange(0, input.value.length); } catch (_) {}
+				input.focus({preventScroll: true});
+				try {
+					input.setSelectionRange(0, input.value.length);
+				} catch (_) {
+				}
 			});
 		});
 	}
@@ -396,8 +402,8 @@ async function executeDeleteDocument() {
 	try {
 		const response = await fetch('excel_backend.php', {
 			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ action: 'delete', documentId })
+			headers: {'Content-Type': 'application/json'},
+			body: JSON.stringify({action: 'delete', documentId})
 		});
 		const result = await response.json();
 		if (result.success) {
@@ -432,11 +438,14 @@ async function saveData() {
 
 	try {
 		const saveBtn = document.getElementById('save-btn');
-		if (saveBtn) { saveBtn.textContent = '💾 Salvando...'; saveBtn.disabled = true; }
+		if (saveBtn) {
+			saveBtn.textContent = '💾 Salvando...';
+			saveBtn.disabled = true;
+		}
 
 		const response = await fetch('excel_backend.php', {
 			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
+			headers: {'Content-Type': 'application/json'},
 			body: JSON.stringify({
 				action: 'save',
 				documentId,
@@ -457,7 +466,10 @@ async function saveData() {
 		showStatus('Errore di connessione: ' + error.message, 'error');
 	} finally {
 		const saveBtn = document.getElementById('save-btn');
-		if (saveBtn) { saveBtn.textContent = '💾 Salva'; saveBtn.disabled = false; }
+		if (saveBtn) {
+			saveBtn.textContent = '💾 Salva';
+			saveBtn.disabled = false;
+		}
 	}
 }
 
@@ -478,7 +490,7 @@ function exportExcel() {
 		});
 	}
 
-	const wbout = XLSX.write(workbook, { bookType: 'xlsx', type: 'binary' });
+	const wbout = XLSX.write(workbook, {bookType: 'xlsx', type: 'binary'});
 	const s2ab = (s) => {
 		const buf = new ArrayBuffer(s.length);
 		const view = new Uint8Array(buf);
@@ -486,7 +498,7 @@ function exportExcel() {
 		return buf;
 	};
 
-	const blob = new Blob([s2ab(wbout)], { type: "application/octet-stream" });
+	const blob = new Blob([s2ab(wbout)], {type: "application/octet-stream"});
 	const url = URL.createObjectURL(blob);
 
 	const a = document.createElement('a');
@@ -553,7 +565,7 @@ window.onclick = function (event) {
 
 document.addEventListener('keydown', function (event) {
 	if (event.key === 'Escape') closeModal();
-}, { passive: true });
+}, {passive: true});
 
 /* --------------------- Bootstrap all’avvio --------------------- */
 window.onload = async function () {
