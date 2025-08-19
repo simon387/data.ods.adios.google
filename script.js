@@ -1,18 +1,75 @@
-// Variabili globali
+/* =========================
+   script.js - versione pulita
+   ========================= */
+
+/* ---------- Cattura errori visibile (utile su mobile senza console) ---------- */
+window.addEventListener('error', function (e) {
+	try {
+		const div = document.createElement('div');
+		div.style.position = 'fixed';
+		div.style.top = '0';
+		div.style.left = '0';
+		div.style.right = '0';
+		div.style.background = 'red';
+		div.style.color = 'white';
+		div.style.padding = '6px';
+		div.style.fontSize = '14px';
+		div.style.zIndex = '99999';
+		div.textContent = "JS Error: " + e.message + " @ " + e.filename + ":" + e.lineno;
+		document.body.appendChild(div);
+	} catch (_) {}
+});
+
+window.addEventListener('unhandledrejection', function (e) {
+	try {
+		const div = document.createElement('div');
+		div.style.position = 'fixed';
+		div.style.top = '30px';
+		div.style.left = '0';
+		div.style.right = '0';
+		div.style.background = 'darkred';
+		div.style.color = 'white';
+		div.style.padding = '6px';
+		div.style.fontSize = '14px';
+		div.style.zIndex = '99999';
+		div.textContent = "Promise Error: " + (e.reason && e.reason.message ? e.reason.message : e.reason);
+		document.body.appendChild(div);
+	} catch (_) {}
+});
+
+/* --------------------- Variabili globali --------------------- */
 let workbook = null;
 let currentSheet = 0;
-let data = {};
+let data = {};              // { sheetName: string[][] }
 let selectedCell = null;
 let documentId = null;
 let pendingAction = null;
 
-// Rileva se siamo su un dispositivo mobile
+/* --------------------- Utility --------------------- */
 function isMobile() {
-	return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
-		(window.innerWidth <= 768 && 'ontouchstart' in window);
+	return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+		|| (('ontouchstart' in window) && window.innerWidth <= 1024);
 }
 
-// Carica file Excel
+function colName(n) {
+	// 0 -> A, 25 -> Z, 26 -> AA
+	let s = "";
+	while (n >= 0) {
+		s = String.fromCharCode((n % 26) + 65) + s;
+		n = Math.floor(n / 26) - 1;
+	}
+	return s;
+}
+
+function showStatus(message, type) {
+	const status = document.getElementById('status');
+	if (!status) return;
+	status.textContent = message;
+	status.className = `status ${type} show`;
+	setTimeout(() => status.classList.remove('show'), 3000);
+}
+
+/* --------------------- Caricamento file Excel --------------------- */
 function loadFile(event) {
 	const file = event.target.files[0];
 	if (!file) return;
@@ -20,8 +77,35 @@ function loadFile(event) {
 	const reader = new FileReader();
 	reader.onload = function (e) {
 		try {
-			workbook = XLSX.read(e.target.result, {type: 'binary'});
-			processWorkbook();
+			workbook = XLSX.read(e.target.result, { type: 'binary' });
+			// Costruisci "data" da workbook
+			data = {};
+			const tabsContainer = document.getElementById('sheet-tabs');
+			tabsContainer.innerHTML = '';
+
+			workbook.SheetNames.forEach((sheetName, index) => {
+				const ws = workbook.Sheets[sheetName];
+				let arr = [];
+				try {
+					arr = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false });
+					if ((!arr || arr.length === 0) && ws['!ref']) {
+						arr = extractCellValues(ws);
+					}
+				} catch (_) {
+					arr = [['Errore nel caricamento del foglio']];
+				}
+				data[sheetName] = arr;
+
+				// Tab
+				const tab = document.createElement('div');
+				tab.className = `sheet-tab ${index === 0 ? 'active' : ''}`;
+				tab.textContent = sheetName;
+				tab.addEventListener('click', () => switchSheet(index, sheetName));
+				tabsContainer.appendChild(tab);
+			});
+
+			currentSheet = 0;
+			displaySheet(workbook.SheetNames[0]);
 			showStatus('File caricato con successo!', 'success');
 			updateButtonStates();
 		} catch (error) {
@@ -31,149 +115,58 @@ function loadFile(event) {
 	reader.readAsBinaryString(file);
 }
 
-// Processa il workbook Excel
-function processWorkbook() {
-	data = {};
-	const tabsContainer = document.getElementById('sheet-tabs');
-	tabsContainer.innerHTML = '';
-
-	workbook.SheetNames.forEach((sheetName, index) => {
-		const worksheet = workbook.Sheets[sheetName];
-
-		// Controlla se è una tabella pivot
-		const isPivot = detectPivotTable(worksheet);
-
-		try {
-			data[sheetName] = XLSX.utils.sheet_to_json(worksheet, {header: 1, raw: false});
-
-			// Se la conversione restituisce dati vuoti ma il foglio non è vuoto
-			if (data[sheetName].length === 0 && worksheet['!ref']) {
-				// Prova a estrarre i valori delle celle direttamente
-				data[sheetName] = extractCellValues(worksheet);
-			}
-		} catch (error) {
-			console.warn(`Errore nel processare il foglio ${sheetName}:`, error);
-			data[sheetName] = [['Errore nel caricamento del foglio']];
-		}
-
-		// Crea tab per il foglio
-		const tab = document.createElement('div');
-		tab.className = `sheet-tab ${index === 0 ? 'active' : ''}`;
-		tab.textContent = sheetName + (isPivot ? ' (Pivot)' : '');
-		tab.onclick = () => switchSheet(index, sheetName);
-
-		// Aggiungi indicatore visivo per le pivot
-		if (isPivot) {
-			tab.style.fontStyle = 'italic';
-			tab.style.color = '#666';
-			tab.title = 'Questo foglio contiene una tabella pivot';
-		}
-
-		tabsContainer.appendChild(tab);
-	});
-
-	currentSheet = 0;
-	displaySheet(workbook.SheetNames[0]);
-}
-
-// Rileva se un foglio contiene una tabella pivot
-function detectPivotTable(worksheet) {
-	// Le pivot table hanno spesso proprietà specifiche
-	if (worksheet['!pivots'] || worksheet['!tables']) {
-		return true;
-	}
-
-	// Controlla le celle per indicatori di pivot table
-	const range = worksheet['!ref'];
-	if (!range) return false;
-
-	const decoded = XLSX.utils.decode_range(range);
-	for (let row = decoded.s.r; row <= decoded.e.r; row++) {
-		for (let col = decoded.s.c; col <= decoded.e.c; col++) {
-			const cellAddress = XLSX.utils.encode_cell({r: row, c: col});
-			const cell = worksheet[cellAddress];
-			if (cell && cell.f && cell.f.includes('PIVOT')) {
-				return true;
-			}
-		}
-	}
-
-	return false;
-}
-
-// Estrae i valori delle celle direttamente
 function extractCellValues(worksheet) {
 	const result = [];
 	const range = worksheet['!ref'];
 	if (!range) return result;
 
 	const decoded = XLSX.utils.decode_range(range);
-
-	for (let row = decoded.s.r; row <= decoded.e.r; row++) {
+	for (let r = decoded.s.r; r <= decoded.e.r; r++) {
 		const rowData = [];
-		for (let col = decoded.s.c; col <= decoded.e.c; col++) {
-			const cellAddress = XLSX.utils.encode_cell({r: row, c: col});
+		for (let c = decoded.s.c; c <= decoded.e.c; c++) {
+			const cellAddress = XLSX.utils.encode_cell({ r, c });
 			const cell = worksheet[cellAddress];
-
 			let cellValue = '';
-			if (cell) {
-				// Prova prima il valore formattato, poi quello raw
-				cellValue = cell.w || cell.v || '';
-			}
-
-			rowData[col] = cellValue;
+			if (cell) cellValue = cell.w || cell.v || '';
+			rowData[c - decoded.s.c] = (cellValue === undefined || cellValue === null) ? '' : String(cellValue);
 		}
-		result[row] = rowData;
+		result[r - decoded.s.r] = rowData;
 	}
-
 	return result;
 }
 
-// Cambia foglio
+/* --------------------- Visualizzazione e interazione griglia --------------------- */
 function switchSheet(index, sheetName) {
 	currentSheet = index;
-
-	// Aggiorna tab attivi
 	document.querySelectorAll('.sheet-tab').forEach((tab, i) => {
 		tab.classList.toggle('active', i === index);
 	});
-
 	displaySheet(sheetName);
 	updateButtonStates();
 }
 
-// Visualizza il foglio corrente
 function displaySheet(sheetName) {
 	const table = document.getElementById('spreadsheet-table');
 	const loading = document.getElementById('loading');
+	if (!table || !loading) return;
 
-	if (!data[sheetName]) {
-		data[sheetName] = [[]];
-	}
+	if (!data[sheetName]) data[sheetName] = [[]];
 
 	const sheetData = data[sheetName];
-	const maxCols = Math.max(26, Math.max(...sheetData.map(row => row.length)));
+	const maxCols = Math.max(26, ...sheetData.map(row => row.length || 0));
 	const maxRows = Math.max(20, sheetData.length);
 
 	let html = '<thead><tr><th></th>';
-
-	// Header colonne (A, B, C, ...)
 	for (let col = 0; col < maxCols; col++) {
-		html += `<th>${String.fromCharCode(65 + col)}</th>`;
+		html += `<th>${colName(col)}</th>`;
 	}
 	html += '</tr></thead><tbody>';
 
-	// Righe dati
 	for (let row = 0; row < maxRows; row++) {
 		html += `<tr><th class="row-header">${row + 1}</th>`;
-
 		for (let col = 0; col < maxCols; col++) {
-			const cellValue = sheetData[row] && sheetData[row][col] ? sheetData[row][col] : '';
-			// Su mobile usa solo onclick, su desktop mantieni ondblclick
-			const clickHandler = isMobile() ?
-				`onclick="selectCell(this)" ontouchstart="this.click()"` :
-				`onclick="selectCell(this)" ondblclick="editCell(this)"`;
-			html += `<td class="cell" data-row="${row}" data-col="${col}" ${clickHandler}>${cellValue}</td>`;
+			const cellValue = (sheetData[row] && sheetData[row][col]) ? sheetData[row][col] : '';
+			html += `<td class="cell" data-row="${row}" data-col="${col}">${escapeHtml(cellValue)}</td>`;
 		}
 		html += '</tr>';
 	}
@@ -182,202 +175,243 @@ function displaySheet(sheetName) {
 	table.innerHTML = html;
 	table.style.display = 'table';
 	loading.style.display = 'none';
+
+	// Attacca listener alle celle (desktop + mobile)
+	attachCellListeners(table);
 }
 
-// Seleziona cella
+function escapeHtml(s) {
+	return String(s).replace(/[&<>"']/g, m =>
+		({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m])
+	);
+}
+
+function attachCellListeners(table) {
+	const cells = table.querySelectorAll('td.cell');
+
+	cells.forEach((cell) => {
+		// Desktop: click selezione, doppio click edit
+		cell.addEventListener('click', () => selectCell(cell), { passive: true });
+		cell.addEventListener('dblclick', () => editCell(cell), { passive: true });
+
+		// Mobile: touchend -> seleziona + entra in edit con piccolo delay
+		cell.addEventListener('touchend', () => {
+			selectCell(cell);
+			setTimeout(() => editCell(cell), 0);
+		}, { passive: true });
+	});
+}
+
 function selectCell(cell) {
-	if (selectedCell) {
-		selectedCell.classList.remove('selected');
-	}
+	if (selectedCell) selectedCell.classList.remove('selected');
 	selectedCell = cell;
 	cell.classList.add('selected');
-
-	// Su mobile, entra automaticamente in modalità modifica
-	if (isMobile()) {
-		setTimeout(() => {
-			editCell(cell);
-		}, 100);
-	}
 }
 
-// Modifica cella
+/* --------------------- Editing cella (mobile vs desktop) --------------------- */
 function editCell(cell) {
-	const currentValue = cell.textContent;
-	const input = document.createElement('input');
-	input.type = 'text';
-	input.value = currentValue;
+	const row = parseInt(cell.dataset.row, 10);
+	const col = parseInt(cell.dataset.col, 10);
+	const sheetName = workbook ? workbook.SheetNames[currentSheet] : Object.keys(data)[currentSheet];
+	const oldValue = cell.textContent;
 
-	// Aggiungi attributi specifici per mobile
+	// Evita duplicare editor
+	if (cell.dataset.editing === 'true') return;
+	cell.dataset.editing = 'true';
+
 	if (isMobile()) {
-		input.setAttribute('inputmode', 'text');
-		input.setAttribute('enterkeyhint', 'done');
-		input.style.fontSize = '16px'; // Previene lo zoom su iOS
-		input.style.padding = '8px';
-		input.style.border = '2px solid #007bff';
-		input.style.borderRadius = '4px';
-		input.style.width = '100%';
-		input.style.minHeight = '40px';
-	}
+		// MOBILE: contenteditable = apertura tastiera più affidabile
+		cell.setAttribute('contenteditable', 'plaintext-only'); // fallback: 'true' se vecchio Safari
+		cell.focus({ preventScroll: true });
 
-	input.onblur = function () {
-		finishEdit(cell, input.value);
-	};
+		// Seleziona tutto il testo al focus
+		requestAnimationFrame(() => {
+			try {
+				const range = document.createRange();
+				range.selectNodeContents(cell);
+				const sel = window.getSelection();
+				sel.removeAllRanges();
+				sel.addRange(range);
+			} catch (_) {}
+		});
 
-	input.onkeydown = function (e) {
-		if (e.key === 'Enter') {
-			e.preventDefault();
-			input.blur(); // Su mobile, chiudi la tastiera
-			finishEdit(cell, input.value);
-		} else if (e.key === 'Escape') {
-			finishEdit(cell, currentValue);
-		}
-	};
+		const onBlur = () => {
+			cell.removeAttribute('contenteditable');
+			cell.dataset.editing = 'false';
+			const newValue = cell.textContent;
+			applyEdit(sheetName, row, col, newValue, cell);
+			cell.removeEventListener('blur', onBlur);
+			cell.removeEventListener('keydown', onKey);
+		};
 
-	// Aggiungi evento per il tasto "Done" su mobile
-	input.addEventListener('input', function(e) {
-		if (e.inputType === 'insertCompositionText' || e.inputType === 'insertText') {
-			// Aggiorna in tempo reale se necessario
-		}
-	});
+		const onKey = (e) => {
+			if (e.key === 'Enter') {
+				e.preventDefault();
+				cell.blur();
+			} else if (e.key === 'Escape') {
+				cell.textContent = oldValue;
+				cell.blur();
+			}
+		};
 
-	cell.innerHTML = '';
-	cell.appendChild(input);
-
-	// Focus e selezione con un piccolo delay per mobile
-	if (isMobile()) {
-		setTimeout(() => {
-			input.focus();
-			input.setSelectionRange(0, input.value.length);
-			// Forza l'apertura della tastiera su Android
-			input.click();
-		}, 150);
+		cell.addEventListener('blur', onBlur);
+		cell.addEventListener('keydown', onKey);
 	} else {
-		input.focus();
-		input.select();
+		// DESKTOP: input type="text"
+		const input = document.createElement('input');
+		input.type = 'text';
+		input.value = oldValue;
+		input.className = 'cell-input';
+		input.style.width = '100%';
+		input.style.boxSizing = 'border-box';
+		input.style.fontSize = '14px';
+
+		cell.innerHTML = '';
+		cell.appendChild(input);
+
+		function save() {
+			const newValue = input.value;
+			cell.dataset.editing = 'false';
+			applyEdit(sheetName, row, col, newValue, cell);
+		}
+
+		function cancel() {
+			cell.dataset.editing = 'false';
+			cell.innerHTML = escapeHtml(oldValue);
+		}
+
+		input.addEventListener('keydown', (e) => {
+			if (e.key === 'Enter') {
+				e.preventDefault();
+				input.blur();
+			} else if (e.key === 'Escape') {
+				cancel();
+			}
+		});
+
+		input.addEventListener('blur', save);
+
+		// Focus dopo il reflow per compat mobile/desktop
+		requestAnimationFrame(() => {
+			requestAnimationFrame(() => {
+				input.focus({ preventScroll: true });
+				try { input.setSelectionRange(0, input.value.length); } catch (_) {}
+			});
+		});
 	}
 }
 
-// Completa modifica
-function finishEdit(cell, newValue) {
-	const row = parseInt(cell.dataset.row);
-	const col = parseInt(cell.dataset.col);
-	const sheetName = workbook.SheetNames[currentSheet];
-
-	// Aggiorna i dati
-	if (!data[sheetName][row]) {
-		data[sheetName][row] = [];
-	}
+function applyEdit(sheetName, row, col, newValue, cell) {
+	if (!data[sheetName][row]) data[sheetName][row] = [];
 	data[sheetName][row][col] = newValue;
 
-	cell.innerHTML = newValue;
+	// Aggiorna UI (solo se non abbiamo già un input dentro)
+	if (!cell.querySelector('input')) {
+		cell.innerHTML = escapeHtml(newValue);
+	}
 
-	// Auto-save dopo 1 secondo
-	clearTimeout(window.saveTimeout);
-	window.saveTimeout = setTimeout(() => {
-		saveData();
-	}, 1000);
+	// Auto-save debounce
+	clearTimeout(window.__saveTimeout);
+	window.__saveTimeout = setTimeout(() => saveData(), 800);
 }
 
-// Crea nuovo foglio
+/* --------------------- Creazione / Eliminazione fogli --------------------- */
 function createNewSheet() {
 	if (!workbook) {
 		workbook = XLSX.utils.book_new();
 		data = {};
 	}
+	const base = 'Foglio';
+	let idx = 1;
+	let sheetName = `${base}${idx}`;
+	while (data[sheetName]) {
+		idx++;
+		sheetName = `${base}${idx}`;
+	}
 
-	const sheetName = `Foglio${Object.keys(data).length + 1}`;
 	data[sheetName] = [[]];
 	workbook.SheetNames.push(sheetName);
 	workbook.Sheets[sheetName] = XLSX.utils.aoa_to_sheet([[]]);
 
-	// Aggiorna UI
 	const tabsContainer = document.getElementById('sheet-tabs');
 	const tab = document.createElement('div');
 	tab.className = 'sheet-tab';
 	tab.textContent = sheetName;
-	tab.onclick = () => switchSheet(workbook.SheetNames.length - 1, sheetName);
+	const newIndex = workbook.SheetNames.length - 1;
+	tab.addEventListener('click', () => switchSheet(newIndex, sheetName));
 	tabsContainer.appendChild(tab);
 
-	switchSheet(workbook.SheetNames.length - 1, sheetName);
+	switchSheet(newIndex, sheetName);
 	updateButtonStates();
 }
 
-// Elimina foglio corrente
 function deleteCurrentSheet() {
 	if (!workbook || workbook.SheetNames.length <= 1) {
 		showStatus('Non puoi eliminare l\'ultimo foglio', 'error');
 		return;
 	}
-
 	const sheetName = workbook.SheetNames[currentSheet];
 	showConfirmModal(
 		'Elimina Foglio',
 		`Sei sicuro di voler eliminare il foglio "${sheetName}"? Questa azione non può essere annullata.`,
-		() => executeDeleteSheet()
+		executeDeleteSheet
 	);
 }
 
-// Esegue l'eliminazione del foglio
 function executeDeleteSheet() {
 	const sheetName = workbook.SheetNames[currentSheet];
-
-	// Rimuovi dal workbook
 	workbook.SheetNames.splice(currentSheet, 1);
 	delete workbook.Sheets[sheetName];
 	delete data[sheetName];
 
-	// Aggiusta l'indice del foglio corrente
-	if (currentSheet >= workbook.SheetNames.length) {
-		currentSheet = workbook.SheetNames.length - 1;
-	}
+	if (currentSheet >= workbook.SheetNames.length) currentSheet = workbook.SheetNames.length - 1;
 
-	// Ricostruisci i tab
-	processWorkbook();
+	// Ricostruisci tabs e vista
+	const tabsContainer = document.getElementById('sheet-tabs');
+	tabsContainer.innerHTML = '';
+	workbook.SheetNames.forEach((name, idx) => {
+		const tab = document.createElement('div');
+		tab.className = `sheet-tab ${idx === currentSheet ? 'active' : ''}`;
+		tab.textContent = name;
+		tab.addEventListener('click', () => switchSheet(idx, name));
+		tabsContainer.appendChild(tab);
+	});
+
+	displaySheet(workbook.SheetNames[currentSheet]);
 	updateButtonStates();
 	showStatus(`Foglio "${sheetName}" eliminato`, 'success');
 
-	// Auto-save
-	setTimeout(() => saveData(), 500);
+	setTimeout(saveData, 500);
 }
 
-// Elimina intero documento
 function deleteDocument() {
 	showConfirmModal(
 		'Elimina Documento',
 		'Sei sicuro di voler eliminare completamente questo documento? Tutti i dati andranno persi e questa azione non può essere annullata.',
-		() => executeDeleteDocument()
+		executeDeleteDocument
 	);
 }
 
-// Esegue l'eliminazione del documento
 async function executeDeleteDocument() {
 	try {
 		const response = await fetch('excel_backend.php', {
 			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json'
-			},
-			body: JSON.stringify({
-				action: 'delete',
-				documentId: documentId
-			})
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ action: 'delete', documentId })
 		});
-
 		const result = await response.json();
-
 		if (result.success) {
-			// Reset dell'applicazione
 			workbook = null;
 			data = {};
 			documentId = null;
 			selectedCell = null;
 			currentSheet = 0;
 
-			// Reset UI
 			document.getElementById('sheet-tabs').innerHTML = '';
 			document.getElementById('spreadsheet-table').style.display = 'none';
-			document.getElementById('loading').style.display = 'block';
-			document.getElementById('loading').textContent = 'Carica un file Excel per iniziare o crea un nuovo foglio';
+			const loading = document.getElementById('loading');
+			loading.style.display = 'block';
+			loading.textContent = 'Carica un file Excel per iniziare o crea un nuovo foglio';
 
 			updateButtonStates();
 			showStatus('Documento eliminato completamente', 'success');
@@ -389,54 +423,7 @@ async function executeDeleteDocument() {
 	}
 }
 
-// Aggiorna stato dei pulsanti
-function updateButtonStates() {
-	const deleteSheetBtn = document.getElementById('delete-sheet-btn');
-	const deleteDocBtn = document.getElementById('delete-doc-btn');
-
-	// Disabilita eliminazione foglio se ce n'è solo uno o nessuno
-	if (workbook && workbook.SheetNames.length > 1) {
-		deleteSheetBtn.disabled = false;
-		deleteSheetBtn.title = '';
-	} else {
-		deleteSheetBtn.disabled = true;
-		deleteSheetBtn.title = 'Non puoi eliminare l\'ultimo foglio';
-	}
-
-	// Disabilita eliminazione documento se non c'è niente da eliminare
-	if (workbook && Object.keys(data).length > 0) {
-		deleteDocBtn.disabled = false;
-		deleteDocBtn.title = '';
-	} else {
-		deleteDocBtn.disabled = true;
-		deleteDocBtn.title = 'Nessun documento da eliminare';
-	}
-}
-
-// Mostra modal di conferma
-function showConfirmModal(title, message, onConfirm) {
-	document.getElementById('modal-title').textContent = title;
-	document.getElementById('modal-message').textContent = message;
-	document.getElementById('confirm-modal').style.display = 'block';
-	pendingAction = onConfirm;
-}
-
-// Chiude modal
-function closeModal() {
-	document.getElementById('confirm-modal').style.display = 'none';
-	pendingAction = null;
-}
-
-// Conferma azione
-function confirmAction() {
-	if (pendingAction) {
-		pendingAction();
-		pendingAction = null;
-	}
-	closeModal();
-}
-
-// Salva dati su server
+/* --------------------- Salvataggio / Esportazione --------------------- */
 async function saveData() {
 	if (!workbook || Object.keys(data).length === 0) {
 		showStatus('Nessun dato da salvare', 'error');
@@ -445,28 +432,22 @@ async function saveData() {
 
 	try {
 		const saveBtn = document.getElementById('save-btn');
-		saveBtn.textContent = '💾 Salvando...';
-		saveBtn.disabled = true;
+		if (saveBtn) { saveBtn.textContent = '💾 Salvando...'; saveBtn.disabled = true; }
 
 		const response = await fetch('excel_backend.php', {
 			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json'
-			},
+			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({
 				action: 'save',
-				documentId: documentId,
-				data: data,
+				documentId,
+				data,
 				sheetNames: workbook.SheetNames
 			})
 		});
 
 		const result = await response.json();
-
 		if (result.success) {
-			if (!documentId) {
-				documentId = result.documentId;
-			}
+			if (!documentId) documentId = result.documentId;
 			showStatus('Dati salvati con successo!', 'success');
 			updateButtonStates();
 		} else {
@@ -476,33 +457,36 @@ async function saveData() {
 		showStatus('Errore di connessione: ' + error.message, 'error');
 	} finally {
 		const saveBtn = document.getElementById('save-btn');
-		saveBtn.textContent = '💾 Salva';
-		saveBtn.disabled = false;
+		if (saveBtn) { saveBtn.textContent = '💾 Salva'; saveBtn.disabled = false; }
 	}
 }
 
-// Esporta in Excel
 function exportExcel() {
 	if (!workbook) {
-		showStatus('Nessun dato da esportare', 'error');
-		return;
+		if (Object.keys(data).length === 0) {
+			showStatus('Nessun dato da esportare', 'error');
+			return;
+		}
+		workbook = XLSX.utils.book_new();
+		Object.keys(data).forEach((sheetName) => {
+			XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(data[sheetName] || [[]]), sheetName);
+		});
+	} else {
+		// Aggiorna fogli dal "data"
+		Object.keys(data).forEach(sheetName => {
+			workbook.Sheets[sheetName] = XLSX.utils.aoa_to_sheet(data[sheetName]);
+		});
 	}
 
-	// Aggiorna il workbook con i dati correnti
-	Object.keys(data).forEach(sheetName => {
-		workbook.Sheets[sheetName] = XLSX.utils.aoa_to_sheet(data[sheetName]);
-	});
-
-	const wbout = XLSX.write(workbook, {bookType: 'xlsx', type: 'binary'});
-
-	function s2ab(s) {
+	const wbout = XLSX.write(workbook, { bookType: 'xlsx', type: 'binary' });
+	const s2ab = (s) => {
 		const buf = new ArrayBuffer(s.length);
 		const view = new Uint8Array(buf);
 		for (let i = 0; i < s.length; i++) view[i] = s.charCodeAt(i) & 0xFF;
 		return buf;
-	}
+	};
 
-	const blob = new Blob([s2ab(wbout)], {type: "application/octet-stream"});
+	const blob = new Blob([s2ab(wbout)], { type: "application/octet-stream" });
 	const url = URL.createObjectURL(blob);
 
 	const a = document.createElement('a');
@@ -516,53 +500,150 @@ function exportExcel() {
 	showStatus('File esportato con successo!', 'success');
 }
 
-// Mostra messaggio di stato
-function showStatus(message, type) {
-	const status = document.getElementById('status');
-	status.textContent = message;
-	status.className = `status ${type} show`;
-
-	setTimeout(() => {
-		status.classList.remove('show');
-	}, 3000);
+/* --------------------- Modal conferma --------------------- */
+function showConfirmModal(title, message, onConfirm) {
+	document.getElementById('modal-title').textContent = title;
+	document.getElementById('modal-message').textContent = message;
+	document.getElementById('confirm-modal').style.display = 'block';
+	pendingAction = onConfirm;
 }
 
-// Event listeners per il modal (click fuori per chiudere)
+function closeModal() {
+	document.getElementById('confirm-modal').style.display = 'none';
+	pendingAction = null;
+}
+
+function confirmAction() {
+	if (pendingAction) {
+		pendingAction();
+		pendingAction = null;
+	}
+	closeModal();
+}
+
+/* --------------------- Stato pulsanti --------------------- */
+function updateButtonStates() {
+	const deleteSheetBtn = document.getElementById('delete-sheet-btn');
+	const deleteDocBtn = document.getElementById('delete-doc-btn');
+
+	if (!deleteSheetBtn || !deleteDocBtn) return;
+
+	if (workbook && workbook.SheetNames.length > 1) {
+		deleteSheetBtn.disabled = false;
+		deleteSheetBtn.title = '';
+	} else {
+		deleteSheetBtn.disabled = true;
+		deleteSheetBtn.title = 'Non puoi eliminare l\'ultimo foglio';
+	}
+
+	if (workbook && Object.keys(data).length > 0) {
+		deleteDocBtn.disabled = false;
+		deleteDocBtn.title = '';
+	} else {
+		deleteDocBtn.disabled = true;
+		deleteDocBtn.title = 'Nessun documento da eliminare';
+	}
+}
+
+/* --------------------- Eventi globali pagina --------------------- */
 window.onclick = function (event) {
 	const modal = document.getElementById('confirm-modal');
-	if (event.target === modal) {
-		closeModal();
-	}
+	if (event.target === modal) closeModal();
 };
 
-// Event listener per ESC per chiudere il modal
 document.addEventListener('keydown', function (event) {
-	if (event.key === 'Escape') {
-		closeModal();
-	}
-});
+	if (event.key === 'Escape') closeModal();
+}, { passive: true });
 
-// Carica dati esistenti all'avvio
+/* --------------------- Bootstrap all’avvio --------------------- */
 window.onload = async function () {
+	// Collega i pulsanti (se non già con onclick inline)
+	const fileInput = document.getElementById('file-upload');
+	if (fileInput) fileInput.addEventListener('change', loadFile);
+
+	const saveBtn = document.getElementById('save-btn');
+	if (saveBtn) saveBtn.addEventListener('click', saveData);
+
+	const exportBtn = Array.from(document.querySelectorAll('button')).find(b => b.textContent && b.textContent.includes('Esporta'));
+	if (exportBtn) exportBtn.addEventListener('click', exportExcel);
+
+	const newSheetBtn = Array.from(document.querySelectorAll('button')).find(b => b.textContent && b.textContent.includes('Nuovo Foglio'));
+	if (newSheetBtn) newSheetBtn.addEventListener('click', createNewSheet);
+
+	const delSheetBtn = document.getElementById('delete-sheet-btn');
+	if (delSheetBtn) delSheetBtn.addEventListener('click', deleteCurrentSheet);
+
+	const delDocBtn = document.getElementById('delete-doc-btn');
+	if (delDocBtn) delDocBtn.addEventListener('click', deleteDocument);
+
+	const confirmBtn = document.getElementById('confirm-btn');
+	if (confirmBtn) confirmBtn.addEventListener('click', confirmAction);
+
+	// Carica dati esistenti dal server (se presenti)
 	try {
 		const response = await fetch('excel_backend.php?action=load');
 		const result = await response.json();
 
 		if (result.success && result.data) {
-			documentId = result.documentId;
-			data = result.data;
-			workbook = XLSX.utils.book_new();
+			documentId = result.documentId || null;
+			data = result.data || {};
 
+			// Ricostruisci un workbook "vuoto" ma con i sheet
+			workbook = XLSX.utils.book_new();
 			result.sheetNames.forEach(sheetName => {
 				workbook.SheetNames.push(sheetName);
-				workbook.Sheets[sheetName] = XLSX.utils.aoa_to_sheet(data[sheetName] || []);
+				workbook.Sheets[sheetName] = XLSX.utils.aoa_to_sheet(data[sheetName] || [[]]);
 			});
 
-			processWorkbook();
+			// Tabs
+			const tabsContainer = document.getElementById('sheet-tabs');
+			tabsContainer.innerHTML = '';
+			workbook.SheetNames.forEach((name, idx) => {
+				const tab = document.createElement('div');
+				tab.className = `sheet-tab ${idx === 0 ? 'active' : ''}`;
+				tab.textContent = name;
+				tab.addEventListener('click', () => switchSheet(idx, name));
+				tabsContainer.appendChild(tab);
+			});
+
+			currentSheet = 0;
+			displaySheet(workbook.SheetNames[0]);
 			showStatus('Dati caricati dal server', 'success');
+		} else {
+			// Nessun dato: prepara workbook nuovo con un foglio
+			workbook = XLSX.utils.book_new();
+			const defaultName = 'Foglio1';
+			data[defaultName] = [[]];
+			workbook.SheetNames.push(defaultName);
+			workbook.Sheets[defaultName] = XLSX.utils.aoa_to_sheet([[]]);
+
+			const tabsContainer = document.getElementById('sheet-tabs');
+			tabsContainer.innerHTML = '';
+			const tab = document.createElement('div');
+			tab.className = 'sheet-tab active';
+			tab.textContent = defaultName;
+			tab.addEventListener('click', () => switchSheet(0, defaultName));
+			tabsContainer.appendChild(tab);
+
+			displaySheet(defaultName);
 		}
 	} catch (error) {
-		console.log('Nessun dato esistente da caricare');
+		// In caso di errore di rete, crea un workbook nuovo
+		workbook = XLSX.utils.book_new();
+		const defaultName = 'Foglio1';
+		data[defaultName] = [[]];
+		workbook.SheetNames.push(defaultName);
+		workbook.Sheets[defaultName] = XLSX.utils.aoa_to_sheet([[]]);
+
+		const tabsContainer = document.getElementById('sheet-tabs');
+		tabsContainer.innerHTML = '';
+		const tab = document.createElement('div');
+		tab.className = 'sheet-tab active';
+		tab.textContent = defaultName;
+		tab.addEventListener('click', () => switchSheet(0, defaultName));
+		tabsContainer.appendChild(tab);
+
+		displaySheet(defaultName);
 	}
 
 	updateButtonStates();
