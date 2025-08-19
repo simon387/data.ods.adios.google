@@ -23,3 +23,7 @@ class Config
 	static string $db_password = '';
 }
 ```
+
+## TODOS
+
++ mobile non lascia modificare le celle

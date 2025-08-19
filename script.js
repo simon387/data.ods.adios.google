@@ -174,6 +174,12 @@ function displaySheet(sheetName) {
 	loading.style.display = 'none';
 }
 
+// Rileva se siamo su un dispositivo mobile
+function isMobile() {
+	return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+		(window.innerWidth <= 768 && 'ontouchstart' in window);
+}
+
 // Seleziona cella
 function selectCell(cell) {
 	if (selectedCell) {
@@ -181,6 +187,11 @@ function selectCell(cell) {
 	}
 	selectedCell = cell;
 	cell.classList.add('selected');
+
+	// Su mobile, entra automaticamente in modalità modifica
+	if (isMobile()) {
+		editCell(cell);
+	}
 }
 
 // Modifica cella
