@@ -1,3 +1,6 @@
+Version 1.0.4
+- added version on frontend
+
 Version 1.0.3
 - fix bug mobile
 
