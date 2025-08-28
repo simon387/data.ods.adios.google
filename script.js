@@ -216,6 +216,7 @@ function editCell(cell) {
 	const col = parseInt(cell.dataset.col, 10);
 	const sheetName = workbook ? workbook.SheetNames[currentSheet] : Object.keys(data)[currentSheet];
 	const oldValue = cell.textContent;
+	console.log(`Editing cell ${colName(col)}${row + 1} in sheet "${sheetName}" with old value: "${oldValue}"`);
 
 	// Evita duplicare editor
 	if (cell.dataset.editing === 'true') return;

@@ -1,3 +1,6 @@
+Version 1.0.8
+- added debug logs
+
 Version 1.0.7
 - updated css for mobile
 - changed row and column defatult limits
