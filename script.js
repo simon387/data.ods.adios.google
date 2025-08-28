@@ -218,11 +218,16 @@ function editCell(cell) {
 	const oldValue = cell.textContent;
 	console.log(`Editing cell ${colName(col)}${row + 1} in sheet "${sheetName}" with old value: "${oldValue}"`);
 
-	/* custom per il mio caso d'uso*/
-	if (row === 0) return; // non editare prima riga (intestazioni)
+	/* custom per il mio caso d'uso */
+	if (row === 0 || col === 0) {
+		console.log('Non puoi editare la prima riga o la prima colonna');
+		return; // non editare prima riga (intestazioni)}
+	}
 
 	// Evita duplicare editor
-	if (cell.dataset.editing === 'true') return;
+	if (cell.dataset.editing === 'true') {
+		return;
+	}
 	cell.dataset.editing = 'true';
 
 	if (isMobile()) {
