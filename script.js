@@ -216,13 +216,13 @@ function editCell(cell) {
 	const col = parseInt(cell.dataset.col, 10);
 	const sheetName = workbook ? workbook.SheetNames[currentSheet] : Object.keys(data)[currentSheet];
 	const oldValue = cell.textContent;
-	console.log(`Editing cell ${colName(col)}${row + 1} in sheet "${sheetName}" with old value: "${oldValue}"`);
 
 	/* custom per il mio caso d'uso */
 	if (row === 0 || col === 0) {
-		console.log('Non puoi editare la prima riga o la prima colonna');
+		console.log("Can't edit first row or first columnt!");
 		return; // non editare prima riga (intestazioni)}
 	}
+	console.log(`Editing cell ${colName(col)}${row + 1} in sheet "${sheetName}" with old value: "${oldValue}"`);
 
 	// Evita duplicare editor
 	if (cell.dataset.editing === 'true') {

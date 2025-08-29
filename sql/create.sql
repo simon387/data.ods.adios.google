@@ -39,4 +39,5 @@ CREATE TABLE IF NOT EXISTS excel_cells (
                                            cell_type ENUM('string', 'number', 'formula', 'boolean', 'date', 'empty') DEFAULT 'string',
                                            cell_format VARCHAR(50) DEFAULT NULL COMMENT 'Formato della cella (opzionale)',
                                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                                           updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT
+                                           updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB COMMENT='Fogli di lavoro dei documenti Excel';

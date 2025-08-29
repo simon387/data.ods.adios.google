@@ -8,6 +8,9 @@ Gestisce un file excel online, senza dipendere da google o microsoft, DB indipen
 
 ## Config
 
+Prima riga: ```date	import	note```
+
+
 ```Config.php```
 
 ```php
@@ -17,9 +20,9 @@ namespace App\Config;
 
 class Config
 {
-	static string $db_host = '';
-	static string $db_name = '';
-	static string $db_username = '';
+	static string $db_host = 'localhost';
+	static string $db_name = 'excel_webapp';
+	static string $db_username = 'root';
 	static string $db_password = '';
 }
 ```
