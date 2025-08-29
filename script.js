@@ -46,6 +46,7 @@ let data = {};              // { sheetName: string[][] }
 let selectedCell = null;
 let documentId = null;
 let pendingAction = null;
+const STARTING_EDITABLE_ROW = 1; // Cambia questo numero per impostare da quale riga iniziare (0-based)
 
 /* --------------------- Utility --------------------- */
 function isMobile() {
@@ -69,6 +70,34 @@ function showStatus(message, type) {
 	status.textContent = message;
 	status.className = `status ${type} show`;
 	setTimeout(() => status.classList.remove('show'), 3000);
+}
+
+// Funzione helper per trovare la prima riga vuota
+function findFirstEmptyRow(sheetName, startFromRow) {
+	const sheetData = data[sheetName] || [];
+
+	for (let row = startFromRow; row < Math.max(sheetData.length, 100); row++) {
+		// Controlla se la riga è vuota o contiene solo celle vuote/whitespace
+		const rowData = sheetData[row] || [];
+		const isEmpty = rowData.every(cell => !cell || String(cell).trim() === '');
+
+		if (isEmpty) {
+			return row;
+		}
+	}
+
+	// Se non trova righe vuote, restituisce la prima riga dopo i dati esistenti
+	return Math.max(sheetData.length, startFromRow);
+}
+
+// Funzione helper per controllare se una riga è modificabile
+function isRowEditable(row, sheetName) {
+	if (row === 0) return false; // Prima riga sempre non modificabile (intestazioni)
+
+	const firstEmptyRow = findFirstEmptyRow(sheetName, STARTING_EDITABLE_ROW);
+
+	// Modificabile solo se è la prima riga vuota
+	return row === firstEmptyRow;
 }
 
 /* --------------------- Caricamento file Excel --------------------- */
@@ -217,11 +246,21 @@ function editCell(cell) {
 	const sheetName = workbook ? workbook.SheetNames[currentSheet] : Object.keys(data)[currentSheet];
 	const oldValue = cell.textContent;
 
-	// Regola speciale: protezione intestazioni e colonna A per le date
-	if (row === 0 || col === 0) {
-		console.log("Can't edit first row or first columnt!");
-		return; // non editare prima riga (intestazioni)}
+	// Controllo se la riga è modificabile
+	if (!isRowEditable(row, sheetName)) {
+		if (row === 0) {
+			console.log("Can't edit header row!");
+			showStatus('Non puoi modificare le intestazioni', 'error');
+		} else if (row < STARTING_EDITABLE_ROW) {
+			console.log(`Can't edit row ${row + 1}. Editing starts from row ${STARTING_EDITABLE_ROW + 1}`);
+			showStatus(`Modifica consentita solo dalla riga ${STARTING_EDITABLE_ROW + 1} in poi`, 'error');
+		} else {
+			console.log(`Can only edit the first empty row. Row ${row + 1} is not the first empty row.`);
+			showStatus('Puoi modificare solo la prima riga vuota', 'error');
+		}
+		return;
 	}
+
 	console.log(`Editing cell ${colName(col)}${row + 1} in sheet "${sheetName}" with old value: "${oldValue}"`);
 
 	// Evita duplicare editor
@@ -316,7 +355,62 @@ function editCell(cell) {
 	}
 }
 
+// Funzione helper per validare se un valore è un importo valido
+function isValidAmount(value) {
+	if (!value || value.trim() === '') return true; // Celle vuote sono valide
+
+	// Rimuovi spazi e converti virgole in punti per la validazione
+	const cleanValue = value.trim().replace(',', '.');
+
+	// Regex per importi validi:
+	// - Può iniziare con + o - (opzionale)
+	// - Deve avere almeno una cifra
+	// - Può avere decimali con punto o virgola
+	// - Esempi validi: 123, 123.45, 123,45, -123.45, +123, 0.5, .5
+	const amountRegex = /^[+-]?(\d+([.,]\d+)?|[.,]\d+)$/;
+
+	return amountRegex.test(cleanValue);
+}
+
+// Funzione helper per formattare l'importo (opzionale)
+function formatAmount(value) {
+	if (!value || value.trim() === '') return '';
+
+	// Converti virgola in punto e parsea come numero
+	const cleanValue = value.trim().replace(',', '.');
+	const number = parseFloat(cleanValue);
+
+	if (isNaN(number)) return value; // Se non è un numero valido, restituisci il valore originale
+
+	// Formatta con 2 decimali e virgola come separatore decimale (stile italiano)
+	return number.toLocaleString('it-IT', {
+		minimumFractionDigits: 2,
+		maximumFractionDigits: 2
+	});
+}
+
 function applyEdit(sheetName, row, col, newValue, cell) {
+	// Validazione specifica per colonna B (importi)
+	if (col === 1 && row > 0 && newValue.trim() !== '') {
+		if (!isValidAmount(newValue)) {
+			// Mostra errore e ripristina il valore precedente
+			showStatus('Errore: Inserire un importo valido (es: 123.45, 123,45, -50)', 'error');
+
+			// Ripristina il valore precedente nella cella
+			const previousValue = data[sheetName][row] ? (data[sheetName][row][col] || '') : '';
+			cell.innerHTML = escapeHtml(previousValue);
+
+			// Aggiungi una classe CSS per evidenziare l'errore (opzionale)
+			cell.classList.add('error');
+			setTimeout(() => cell.classList.remove('error'), 2000);
+
+			return; // Non salvare il valore non valido
+		}
+
+		// Opzionale: formatta l'importo automaticamente
+		// newValue = formatAmount(newValue);
+	}
+
 	if (!data[sheetName][row]) data[sheetName][row] = [];
 	data[sheetName][row][col] = newValue;
 
@@ -338,7 +432,7 @@ function applyEdit(sheetName, row, col, newValue, cell) {
 			dateCell.innerHTML = escapeHtml(formattedDate);
 		}
 
-		console.log(`Automatically inserted date: ${formattedDate} in cell A${row + 1}`);
+		console.log(`Data automatica inserita: ${formattedDate} nella cella A${row + 1}`);
 	}
 
 	// Aggiorna UI (solo se non abbiamo già un input dentro)
