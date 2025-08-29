@@ -240,20 +240,52 @@ function selectCell(cell) {
 }
 
 /* --------------------- Editing cella (mobile vs desktop) --------------------- */
+// Funzione helper per controllare se una cella è modificabile
+function isCellEditable(row, col, sheetName) {
+	// Prima riga sempre non modificabile (intestazioni)
+	if (row === 0) return false;
+
+	const firstEmptyRow = findFirstEmptyRow(sheetName, STARTING_EDITABLE_ROW);
+
+	// Se è la prima riga vuota, tutte le colonne sono modificabili
+	if (row === firstEmptyRow) return true;
+
+	// Se non è la prima riga vuota, controlla se è colonna C (index 2) e se è l'ultima colonna con dati
+	if (col === 2) {
+		const rowData = data[sheetName][row] || [];
+
+		// Trova l'ultima colonna con dati in questa riga
+		let lastColWithData = -1;
+		for (let c = 0; c < rowData.length; c++) {
+			if (rowData[c] && String(rowData[c]).trim() !== '') {
+				lastColWithData = c;
+			}
+		}
+
+		// La colonna C è modificabile solo se è l'ultima colonna con dati o se non ci sono ancora dati in questa riga
+		return lastColWithData === -1 || col === lastColWithData + 1;
+	}
+
+	return false;
+}
+
 function editCell(cell) {
 	const row = parseInt(cell.dataset.row, 10);
 	const col = parseInt(cell.dataset.col, 10);
 	const sheetName = workbook ? workbook.SheetNames[currentSheet] : Object.keys(data)[currentSheet];
 	const oldValue = cell.textContent;
 
-	// Controllo se la riga è modificabile
-	if (!isRowEditable(row, sheetName)) {
+	// Controllo se la cella è modificabile
+	if (!isCellEditable(row, col, sheetName)) {
 		if (row === 0) {
 			console.log("Can't edit header row!");
 			showStatus('Non puoi modificare le intestazioni', 'error');
 		} else if (row < STARTING_EDITABLE_ROW) {
 			console.log(`Can't edit row ${row + 1}. Editing starts from row ${STARTING_EDITABLE_ROW + 1}`);
 			showStatus(`Modifica consentita solo dalla riga ${STARTING_EDITABLE_ROW + 1} in poi`, 'error');
+		} else if (col === 2) {
+			console.log(`Can only edit column C if it's the last column or if adding new data`);
+			showStatus('Puoi modificare la colonna C solo se è l\'ultima colonna o per aggiungere nuovi dati', 'error');
 		} else {
 			console.log(`Can only edit the first empty row. Row ${row + 1} is not the first empty row.`);
 			showStatus('Puoi modificare solo la prima riga vuota', 'error');

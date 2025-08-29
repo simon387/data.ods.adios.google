@@ -32,3 +32,5 @@ class Config
 + ~~mobile non lascia modificare le celle~~
 + ~~meno colonne, più righe, specie mobile~~
 + template data
++ autoscroll
++ calcoli
