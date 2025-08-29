@@ -217,7 +217,7 @@ function editCell(cell) {
 	const sheetName = workbook ? workbook.SheetNames[currentSheet] : Object.keys(data)[currentSheet];
 	const oldValue = cell.textContent;
 
-	/* custom per il mio caso d'uso */
+	// Regola speciale: protezione intestazioni e colonna A per le date
 	if (row === 0 || col === 0) {
 		console.log("Can't edit first row or first columnt!");
 		return; // non editare prima riga (intestazioni)}
@@ -319,6 +319,27 @@ function editCell(cell) {
 function applyEdit(sheetName, row, col, newValue, cell) {
 	if (!data[sheetName][row]) data[sheetName][row] = [];
 	data[sheetName][row][col] = newValue;
+
+	// Regola speciale: se sto inserendo nella colonna B (index 1) e non è la prima riga
+	if (col === 1 && row > 0 && newValue.trim() !== '') {
+		// Aggiungi la data attuale nella colonna A (index 0) della stessa riga
+		const today = new Date();
+		const formattedDate = today.toLocaleDateString('it-IT', {
+			day: '2-digit',
+			month: '2-digit',
+			year: 'numeric'
+		}); // Formato: gg/mm/aaaa
+
+		data[sheetName][row][0] = formattedDate;
+
+		// Aggiorna anche la cella visibile della colonna A se esiste
+		const dateCell = document.querySelector(`td.cell[data-row="${row}"][data-col="0"]`);
+		if (dateCell) {
+			dateCell.innerHTML = escapeHtml(formattedDate);
+		}
+
+		console.log(`Automatically inserted date: ${formattedDate} in cell A${row + 1}`);
+	}
 
 	// Aggiorna UI (solo se non abbiamo già un input dentro)
 	if (!cell.querySelector('input')) {

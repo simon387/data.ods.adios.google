@@ -3,6 +3,7 @@ Version 1.0.11
 - update README
 - added custom auto-date
 - better logs
+- added read-only on old rows
 
 Version 1.0.10
 - first row is read-only now
