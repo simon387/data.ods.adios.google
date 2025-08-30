@@ -42,6 +42,7 @@ $currentVersion = getCurrentVersion();
 			📁 Carica Excel
 		</button>
 		<input style="display: none" type="file" id="file-upload" class="file-input" accept=".xlsx,.xls" onchange="loadFile(event)">
+		<button onclick="toggleBypassMode()" id="bypass-btn" class="secondary">🔒 Abilita Modalità Libera</button>
 		<button onclick="saveData()" id="save-btn">💾 Salva</button>
 		<button onclick="exportExcel()">📤 Esporta Excel</button>
 		<button style="display: none" onclick="createNewSheet()">➕ Nuovo Foglio</button>

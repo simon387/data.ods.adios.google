@@ -47,8 +47,27 @@ let selectedCell = null;
 let documentId = null;
 let pendingAction = null;
 const STARTING_EDITABLE_ROW = 1; // Cambia questo numero per impostare da quale riga iniziare (0-based)
+let bypassMode = false;
 
 /* --------------------- Utility --------------------- */
+// Funzione per togglere il bypass mode
+function toggleBypassMode() {
+	bypassMode = !bypassMode;
+	const bypassBtn = document.getElementById('bypass-btn');
+
+	if (bypassMode) {
+		bypassBtn.textContent = '🔓 Modalità Libera ATTIVA';
+		bypassBtn.classList.add('danger');
+		bypassBtn.classList.remove('secondary');
+		showStatus('⚠️ Modalità bypass attivata - Tutte le regole disabilitate', 'error');
+	} else {
+		bypassBtn.textContent = '🔒 Abilita Modalità Libera';
+		bypassBtn.classList.remove('danger');
+		bypassBtn.classList.add('secondary');
+		showStatus('✅ Modalità normale ripristinata - Regole riattivate', 'success');
+	}
+}
+
 function isMobile() {
 	return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
 		|| (('ontouchstart' in window) && window.innerWidth <= 1024);
@@ -240,8 +259,14 @@ function selectCell(cell) {
 }
 
 /* --------------------- Editing cella (mobile vs desktop) --------------------- */
-// Funzione helper per controllare se una cella è modificabile
+
+// Modifica la funzione isCellEditable per rispettare il bypass
 function isCellEditable(row, col, sheetName) {
+	// Se è attiva la modalità bypass, tutte le celle sono modificabili tranne le intestazioni
+	if (bypassMode) {
+		return row !== 0; // Solo le intestazioni rimangono non modificabili
+	}
+
 	// Prima riga sempre non modificabile (intestazioni)
 	if (row === 0) return false;
 
@@ -269,6 +294,7 @@ function isCellEditable(row, col, sheetName) {
 	return false;
 }
 
+// Modifica la funzione editCell per mostrare il bypass nei messaggi di errore
 function editCell(cell) {
 	const row = parseInt(cell.dataset.row, 10);
 	const col = parseInt(cell.dataset.col, 10);
@@ -280,33 +306,31 @@ function editCell(cell) {
 		if (row === 0) {
 			console.log("Can't edit header row!");
 			showStatus('Non puoi modificare le intestazioni', 'error');
-		} else if (row < STARTING_EDITABLE_ROW) {
+		} else if (!bypassMode && row < STARTING_EDITABLE_ROW) {
 			console.log(`Can't edit row ${row + 1}. Editing starts from row ${STARTING_EDITABLE_ROW + 1}`);
-			showStatus(`Modifica consentita solo dalla riga ${STARTING_EDITABLE_ROW + 1} in poi`, 'error');
-		} else if (col === 2) {
+			showStatus(`Modifica consentita solo dalla riga ${STARTING_EDITABLE_ROW + 1} in poi. Usa la Modalità Libera per bypassare`, 'error');
+		} else if (!bypassMode && col === 2) {
 			console.log(`Can only edit column C if it's the last column or if adding new data`);
-			showStatus('Puoi modificare la colonna C solo se è l\'ultima colonna o per aggiungere nuovi dati', 'error');
-		} else {
+			showStatus('Puoi modificare la colonna C solo se è l\'ultima colonna. Usa la Modalità Libera per bypassare', 'error');
+		} else if (!bypassMode) {
 			console.log(`Can only edit the first empty row. Row ${row + 1} is not the first empty row.`);
-			showStatus('Puoi modificare solo la prima riga vuota', 'error');
+			showStatus('Puoi modificare solo la prima riga vuota. Usa la Modalità Libera per bypassare', 'error');
 		}
 		return;
 	}
 
 	console.log(`Editing cell ${colName(col)}${row + 1} in sheet "${sheetName}" with old value: "${oldValue}"`);
 
-	// Evita duplicare editor
+	// Resto della funzione rimane uguale...
 	if (cell.dataset.editing === 'true') {
 		return;
 	}
 	cell.dataset.editing = 'true';
 
 	if (isMobile()) {
-		// MOBILE: contenteditable = apertura tastiera più affidabile
-		cell.setAttribute('contenteditable', 'plaintext-only'); // fallback: 'true' se vecchio Safari
+		cell.setAttribute('contenteditable', 'plaintext-only');
 		cell.focus({preventScroll: true});
 
-		// Seleziona tutto il testo al focus
 		requestAnimationFrame(() => {
 			try {
 				const range = document.createRange();
@@ -314,8 +338,7 @@ function editCell(cell) {
 				const sel = window.getSelection();
 				sel.removeAllRanges();
 				sel.addRange(range);
-			} catch (_) {
-			}
+			} catch (_) {}
 		});
 
 		const onBlur = () => {
@@ -340,7 +363,6 @@ function editCell(cell) {
 		cell.addEventListener('blur', onBlur);
 		cell.addEventListener('keydown', onKey);
 	} else {
-		// DESKTOP: input type="text"
 		const input = document.createElement('input');
 		input.type = 'text';
 		input.value = oldValue;
@@ -374,14 +396,12 @@ function editCell(cell) {
 
 		input.addEventListener('blur', save);
 
-		// Focus dopo il reflow per compat mobile/desktop
 		requestAnimationFrame(() => {
 			requestAnimationFrame(() => {
 				input.focus({preventScroll: true});
 				try {
 					input.setSelectionRange(0, input.value.length);
-				} catch (_) {
-				}
+				} catch (_) {}
 			});
 		});
 	}
@@ -421,9 +441,10 @@ function formatAmount(value) {
 	});
 }
 
+// Modifica la funzione applyEdit per rispettare il bypass nella validazione
 function applyEdit(sheetName, row, col, newValue, cell) {
-	// Validazione specifica per colonna B (importi)
-	if (col === 1 && row > 0 && newValue.trim() !== '') {
+	// Validazione specifica per colonna B (importi) - SOLO se non in modalità bypass
+	if (!bypassMode && col === 1 && row > 0 && newValue.trim() !== '') {
 		if (!isValidAmount(newValue)) {
 			// Mostra errore e ripristina il valore precedente
 			showStatus('Errore: Inserire un importo valido (es: 123.45, 123,45, -50)', 'error');
@@ -432,29 +453,27 @@ function applyEdit(sheetName, row, col, newValue, cell) {
 			const previousValue = data[sheetName][row] ? (data[sheetName][row][col] || '') : '';
 			cell.innerHTML = escapeHtml(previousValue);
 
-			// Aggiungi una classe CSS per evidenziare l'errore (opzionale)
+			// Aggiungi una classe CSS per evidenziare l'errore
 			cell.classList.add('error');
 			setTimeout(() => cell.classList.remove('error'), 2000);
 
 			return; // Non salvare il valore non valido
 		}
-
-		// Opzionale: formatta l'importo automaticamente
-		// newValue = formatAmount(newValue);
 	}
 
 	if (!data[sheetName][row]) data[sheetName][row] = [];
 	data[sheetName][row][col] = newValue;
 
 	// Regola speciale: se sto inserendo nella colonna B (index 1) e non è la prima riga
-	if (col === 1 && row > 0 && newValue.trim() !== '') {
+	// SOLO se non in modalità bypass
+	if (!bypassMode && col === 1 && row > 0 && newValue.trim() !== '') {
 		// Aggiungi la data attuale nella colonna A (index 0) della stessa riga
 		const today = new Date();
 		const formattedDate = today.toLocaleDateString('it-IT', {
 			day: '2-digit',
 			month: '2-digit',
 			year: 'numeric'
-		}); // Formato: gg/mm/aaaa
+		});
 
 		data[sheetName][row][0] = formattedDate;
 
