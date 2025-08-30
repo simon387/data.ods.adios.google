@@ -50,6 +50,7 @@ const STARTING_EDITABLE_ROW = 1; // Cambia questo numero per impostare da quale 
 let bypassMode = false;
 
 /* --------------------- Utility --------------------- */
+
 // Funzione per togglere il bypass mode
 function toggleBypassMode() {
 	bypassMode = !bypassMode;
@@ -66,6 +67,9 @@ function toggleBypassMode() {
 		bypassBtn.classList.add('secondary');
 		showStatus('✅ Modalità normale ripristinata - Regole riattivate', 'success');
 	}
+
+	// Aggiorna lo stato del pulsante elimina riga quando cambia la modalità
+	updateDeleteRowButtonState();
 }
 
 function isMobile() {
@@ -252,28 +256,36 @@ function attachCellListeners(table) {
 	});
 }
 
+// Modifica la funzione selectCell per aggiornare lo stato del pulsante
 function selectCell(cell) {
 	if (selectedCell) selectedCell.classList.remove('selected');
 	selectedCell = cell;
 	cell.classList.add('selected');
+
+	// Aggiorna lo stato del pulsante elimina riga
+	updateDeleteRowButtonState();
 }
 
 /* --------------------- Editing cella (mobile vs desktop) --------------------- */
 
 // Modifica la funzione isCellEditable per rispettare il bypass
 function isCellEditable(row, col, sheetName) {
-	// Se è attiva la modalità bypass, tutte le celle sono modificabili tranne le intestazioni
+	// Se è attiva la modalità bypass, TUTTE le celle sono modificabili (incluse le intestazioni)
 	if (bypassMode) {
-		return row !== 0; // Solo le intestazioni rimangono non modificabili
+		return true; // Rimuovo la restrizione row !== 0
 	}
 
-	// Prima riga sempre non modificabile (intestazioni)
-	if (row === 0) return false;
+	// Prima riga sempre non modificabile (intestazioni) SOLO in modalità normale
+	if (row === 0) {
+		return false;
+	}
 
 	const firstEmptyRow = findFirstEmptyRow(sheetName, STARTING_EDITABLE_ROW);
 
 	// Se è la prima riga vuota, tutte le colonne sono modificabili
-	if (row === firstEmptyRow) return true;
+	if (row === firstEmptyRow) {
+		return true;
+	}
 
 	// Se non è la prima riga vuota, controlla se è colonna C (index 2) e se è l'ultima colonna con dati
 	if (col === 2) {
@@ -294,7 +306,6 @@ function isCellEditable(row, col, sheetName) {
 	return false;
 }
 
-// Modifica la funzione editCell per mostrare il bypass nei messaggi di errore
 function editCell(cell) {
 	const row = parseInt(cell.dataset.row, 10);
 	const col = parseInt(cell.dataset.col, 10);
@@ -303,9 +314,9 @@ function editCell(cell) {
 
 	// Controllo se la cella è modificabile
 	if (!isCellEditable(row, col, sheetName)) {
-		if (row === 0) {
-			console.log("Can't edit header row!");
-			showStatus('Non puoi modificare le intestazioni', 'error');
+		if (row === 0 && !bypassMode) {
+			console.log("Can't edit header row in normal mode!");
+			showStatus('Non puoi modificare le intestazioni. Usa la Modalità Libera per modificarle', 'error');
 		} else if (!bypassMode && row < STARTING_EDITABLE_ROW) {
 			console.log(`Can't edit row ${row + 1}. Editing starts from row ${STARTING_EDITABLE_ROW + 1}`);
 			showStatus(`Modifica consentita solo dalla riga ${STARTING_EDITABLE_ROW + 1} in poi. Usa la Modalità Libera per bypassare`, 'error');
@@ -835,3 +846,94 @@ window.onload = async function () {
 
 	updateButtonStates();
 };
+
+// Funzione per eliminare la riga della cella selezionata
+function deleteSelectedRow() {
+	if (!selectedCell) {
+		showStatus('Nessuna cella selezionata', 'error');
+		return;
+	}
+
+	if (!bypassMode) {
+		showStatus('Eliminazione riga disponibile solo in Modalità Libera', 'error');
+		return;
+	}
+
+	const row = parseInt(selectedCell.dataset.row, 10);
+	const sheetName = workbook ? workbook.SheetNames[currentSheet] : Object.keys(data)[currentSheet];
+
+	// In modalità libera permetti anche eliminazione delle intestazioni con avviso speciale
+	let confirmMessage = `Sei sicuro di voler eliminare la riga ${row + 1}? Questa azione non può essere annullata.`;
+
+	if (row === 0) {
+		confirmMessage = `⚠️ ATTENZIONE: Stai per eliminare la riga delle INTESTAZIONI (riga 1)!\n\nQuesta azione rimuoverà completamente le intestazioni del foglio e non può essere annullata.\n\nSei davvero sicuro di voler procedere?`;
+	}
+
+	// Mostra conferma prima di eliminare
+	showConfirmModal(
+		row === 0 ? '⚠️ Elimina Intestazioni' : 'Elimina Riga',
+		confirmMessage,
+		() => executeDeleteRow(row, sheetName)
+	);
+}
+
+// Esegue l'eliminazione della riga
+function executeDeleteRow(rowIndex, sheetName) {
+	try {
+		// Rimuovi la riga dai dati
+		if (data[sheetName] && data[sheetName][rowIndex]) {
+			data[sheetName].splice(rowIndex, 1);
+		}
+
+		// Aggiorna la visualizzazione
+		displaySheet(sheetName);
+
+		// Deseleziona la cella eliminata
+		selectedCell = null;
+
+		// Aggiorna lo stato del pulsante
+		updateDeleteRowButtonState();
+
+		showStatus(`Riga ${rowIndex + 1} eliminata con successo`, 'success');
+
+		// Auto-save
+		setTimeout(() => saveData(), 500);
+
+	} catch (error) {
+		showStatus('Errore nell\'eliminazione della riga: ' + error.message, 'error');
+	}
+}
+
+// Aggiorna lo stato del pulsante elimina riga
+function updateDeleteRowButtonState() {
+	const deleteRowBtn = document.getElementById('delete-row-btn');
+	if (!deleteRowBtn) return;
+
+	const hasSelection = selectedCell !== null;
+	const canDelete = bypassMode && hasSelection;
+
+	deleteRowBtn.disabled = !canDelete;
+
+	if (!bypassMode) {
+		deleteRowBtn.title = 'Disponibile solo in Modalità Libera';
+		deleteRowBtn.classList.add('disabled-bypass');
+	} else if (!hasSelection) {
+		deleteRowBtn.title = 'Seleziona una cella per eliminare la sua riga';
+		deleteRowBtn.classList.remove('disabled-bypass');
+	} else if (selectedCell && parseInt(selectedCell.dataset.row, 10) === 0) {
+		deleteRowBtn.title = '⚠️ Elimina riga intestazioni (ATTENZIONE!)';
+		deleteRowBtn.classList.remove('disabled-bypass');
+	} else {
+		deleteRowBtn.title = 'Elimina la riga selezionata';
+		deleteRowBtn.classList.remove('disabled-bypass');
+	}
+}
+
+// (aggiungi alla fine della funzione window.onload esistente)
+function initializeDeleteRowButton() {
+	const deleteRowBtn = document.getElementById('delete-row-btn');
+	if (deleteRowBtn) {
+		deleteRowBtn.addEventListener('click', deleteSelectedRow);
+		updateDeleteRowButtonState(); // Stato iniziale
+	}
+}

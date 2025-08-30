@@ -34,3 +34,4 @@ class Config
 + template data
 + autoscroll
 + calcoli
++ modale dopo che inserisci importo
