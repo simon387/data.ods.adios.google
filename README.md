@@ -33,5 +33,5 @@ class Config
 + ~~meno colonne, più righe, specie mobile~~
 + ~~modale dopo che inserisci importo~~
 + ~~template data~~
-+ autoscroll
 + calcoli
++ autoscroll

@@ -398,3 +398,46 @@ button.primary:hover {
         padding: 10px;
     }
 }
+
+/* CSS personalizzato per le celle di intestazione (prima riga) */
+.cell[data-row="0"] {
+    font-weight: bold;
+    text-transform: uppercase;
+    background-color: #e9ecef !important;
+    font-size: 14px;
+    letter-spacing: 0.5px;
+    color: #495057;
+    text-align: center;
+    border-bottom: 2px solid #adb5bd;
+}
+
+/* Effetto hover per le celle di intestazione */
+.cell[data-row="0"]:hover {
+    background-color: #dee2e6 !important;
+}
+
+/* Quando una cella di intestazione è selezionata */
+.cell[data-row="0"].selected {
+    background-color: #d1ecf1 !important;
+    outline: 2px solid #17a2b8 !important;
+    color: #0c5460;
+}
+
+/* Per gli input nelle celle di intestazione (quando in modalità edit) */
+.cell[data-row="0"] input,
+.cell[data-row="0"][contenteditable] {
+    font-weight: bold;
+    text-transform: uppercase;
+    text-align: center;
+    letter-spacing: 0.5px;
+    color: #495057;
+    background-color: white;
+}
+
+/* Assicurati che il testo rimanga maiuscolo anche durante l'editing */
+.cell[data-row="0"][contenteditable="true"],
+.cell[data-row="0"][contenteditable="plaintext-only"] {
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
