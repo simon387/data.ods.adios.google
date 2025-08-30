@@ -48,6 +48,7 @@ let documentId = null;
 let pendingAction = null;
 const STARTING_EDITABLE_ROW = 1; // Cambia questo numero per impostare da quale riga iniziare (0-based)
 let bypassMode = false;
+let descriptionModalData = null; // Variabile per tenere traccia dei dati della modal descrizione
 
 /* --------------------- Utility --------------------- */
 
@@ -452,7 +453,7 @@ function formatAmount(value) {
 	});
 }
 
-// Modifica la funzione applyEdit per rispettare il bypass nella validazione
+// funzione applyEdit per rispettare il bypass nella validazione
 function applyEdit(sheetName, row, col, newValue, cell) {
 	// Validazione specifica per colonna B (importi) - SOLO se non in modalità bypass
 	if (!bypassMode && col === 1 && row > 0 && newValue.trim() !== '') {
@@ -495,6 +496,11 @@ function applyEdit(sheetName, row, col, newValue, cell) {
 		}
 
 		console.log(`Data automatica inserita: ${formattedDate} nella cella A${row + 1}`);
+
+		// NUOVA FUNZIONALITÀ: Mostra modal per la descrizione
+		setTimeout(() => {
+			showDescriptionModal(row, sheetName);
+		}, 200); // Piccolo delay per permettere all'UI di aggiornarsi
 	}
 
 	// Aggiorna UI (solo se non abbiamo già un input dentro)
@@ -502,9 +508,12 @@ function applyEdit(sheetName, row, col, newValue, cell) {
 		cell.innerHTML = escapeHtml(newValue);
 	}
 
-	// Auto-save debounce
-	clearTimeout(window.__saveTimeout);
-	window.__saveTimeout = setTimeout(() => saveData(), 800);
+	// Auto-save debounce (solo se non stiamo per mostrare la modal descrizione)
+	if (bypassMode || col !== 1 || row === 0 || newValue.trim() === '') {
+		clearTimeout(window.__saveTimeout);
+		window.__saveTimeout = setTimeout(() => saveData(), 800);
+	}
+	// Se stiamo per mostrare la modal, il salvataggio avverrà dopo la conferma della descrizione
 }
 
 /* --------------------- Creazione / Eliminazione fogli --------------------- */
@@ -845,6 +854,7 @@ window.onload = async function () {
 	}
 
 	updateButtonStates();
+	initializeDescriptionModal();
 };
 
 // Funzione per eliminare la riga della cella selezionata
@@ -936,4 +946,113 @@ function initializeDeleteRowButton() {
 		deleteRowBtn.addEventListener('click', deleteSelectedRow);
 		updateDeleteRowButtonState(); // Stato iniziale
 	}
+}
+
+// Funzione per mostrare la modal descrizione
+function showDescriptionModal(row, sheetName) {
+	descriptionModalData = { row, sheetName };
+
+	const modal = document.getElementById('description-modal');
+	const input = document.getElementById('description-input');
+
+	// Pulisci e focalizza l'input
+	input.value = '';
+	modal.style.display = 'block';
+
+	// Focus sull'input dopo l'animazione
+	setTimeout(() => {
+		input.focus();
+	}, 100);
+}
+
+// Funzione per chiudere la modal descrizione
+function closeDescriptionModal() {
+	document.getElementById('description-modal').style.display = 'none';
+	descriptionModalData = null;
+}
+
+// Funzione per confermare e inserire la descrizione
+function confirmDescription() {
+	if (!descriptionModalData) return;
+
+	const input = document.getElementById('description-input');
+	const description = input.value.trim();
+
+	// Se non c'è descrizione, chiedi conferma per procedere senza
+	if (!description) {
+		if (!confirm('Vuoi procedere senza inserire una descrizione?')) {
+			return; // Rimani nella modal
+		}
+	}
+
+	const { row, sheetName } = descriptionModalData;
+
+	// Inserisci la descrizione nella colonna C (index 2)
+	if (!data[sheetName][row]) data[sheetName][row] = [];
+	data[sheetName][row][2] = description;
+
+	// Aggiorna la cella visibile della colonna C se esiste
+	const descriptionCell = document.querySelector(`td.cell[data-row="${row}"][data-col="2"]`);
+	if (descriptionCell) {
+		descriptionCell.innerHTML = escapeHtml(description);
+	}
+
+	// Mostra messaggio di conferma
+	if (description) {
+		showStatus(`Descrizione "${description}" aggiunta alla riga ${row + 1}`, 'success');
+	} else {
+		showStatus(`Importo salvato senza descrizione alla riga ${row + 1}`, 'success');
+	}
+
+	// Chiudi la modal
+	closeDescriptionModal();
+
+	// Auto-save
+	setTimeout(() => saveData(), 500);
+}
+
+function setupDescriptionModalEvents() {
+	const modal = document.getElementById('description-modal');
+	const input = document.getElementById('description-input');
+	const confirmBtn = document.getElementById('description-confirm-btn');
+	const cancelBtn = document.getElementById('description-cancel-btn');
+
+	// Chiudi modal cliccando fuori
+	window.addEventListener('click', function(event) {
+		if (event.target === modal) {
+			closeDescriptionModal();
+		}
+	});
+
+	// Gestione tasti nella modal
+	document.addEventListener('keydown', function(event) {
+		if (modal.style.display === 'block') {
+			if (event.key === 'Enter') {
+				event.preventDefault();
+				confirmDescription();
+			} else if (event.key === 'Escape') {
+				event.preventDefault();
+				closeDescriptionModal();
+			}
+		}
+	});
+
+	// Event listeners per i pulsanti
+	if (confirmBtn) confirmBtn.addEventListener('click', confirmDescription);
+	if (cancelBtn) cancelBtn.addEventListener('click', closeDescriptionModal);
+
+	// Event listener per l'input (Enter per confermare)
+	if (input) {
+		input.addEventListener('keydown', function(event) {
+			if (event.key === 'Enter') {
+				event.preventDefault();
+				confirmDescription();
+			}
+		});
+	}
+}
+
+// Aggiungi questa chiamata nella funzione window.onload
+function initializeDescriptionModal() {
+	setupDescriptionModalEvents();
 }

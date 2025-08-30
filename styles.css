@@ -348,3 +348,53 @@ button.disabled-bypass {
 button.disabled-bypass:hover {
     background: #999 !important;
 }
+
+/* Stili per la modal descrizione */
+.description-input-container {
+    margin: 15px 0;
+}
+
+#description-input {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #ddd;
+    border-radius: 4px;
+    font-size: 16px;
+    font-family: Arial, sans-serif;
+    box-sizing: border-box;
+    transition: border-color 0.3s;
+}
+
+#description-input:focus {
+    outline: none;
+    border-color: #4a69bd;
+    box-shadow: 0 0 5px rgba(74, 105, 189, 0.3);
+}
+
+#description-input::placeholder {
+    color: #999;
+    font-style: italic;
+}
+
+/* Stile per pulsante primario */
+button.primary {
+    background: #28a745;
+    color: white;
+}
+
+button.primary:hover {
+    background: #218838;
+}
+
+/* Responsive per la modal descrizione */
+@media (max-width: 768px) {
+    .modal-content {
+        margin: 10% auto;
+        width: 95%;
+    }
+
+    #description-input {
+        font-size: 16px; /* Previene zoom su iOS */
+        padding: 10px;
+    }
+}

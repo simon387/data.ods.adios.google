@@ -82,6 +82,26 @@ $currentVersion = getCurrentVersion();
 	</div>
 </div>
 
+<!-- Modal descrizione  -->
+<div id="description-modal" class="modal">
+	<div class="modal-content">
+		<h3 id="description-modal-title">💰 Aggiungi Descrizione</h3>
+		<p>Hai inserito un nuovo importo. Vuoi aggiungere una descrizione?</p>
+		<div class="description-input-container">
+			<input
+					type="text"
+					id="description-input"
+					placeholder="Es: Spesa supermercato, Stipendio, Bolletta luce..."
+					maxlength="100"
+			>
+		</div>
+		<div class="modal-actions">
+			<button id="description-cancel-btn" class="secondary">Salta</button>
+			<button id="description-confirm-btn" class="primary">Aggiungi</button>
+		</div>
+	</div>
+</div>
+
 <script src="script.js"></script>
 </body>
 </html>

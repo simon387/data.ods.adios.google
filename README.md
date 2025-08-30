@@ -31,7 +31,7 @@ class Config
 
 + ~~mobile non lascia modificare le celle~~
 + ~~meno colonne, più righe, specie mobile~~
-+ template data
++ ~~modale dopo che inserisci importo~~
++ ~~template data~~
 + autoscroll
 + calcoli
-+ modale dopo che inserisci importo
