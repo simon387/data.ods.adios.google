@@ -8,7 +8,7 @@ Gestisce un file excel online, senza dipendere da google o microsoft, DB indipen
 
 ## Config
 
-Prima riga: ```date	import	note```
+Prima riga: ```data	importo	info	media del mese	stima	totale```
 
 
 ```Config.php```

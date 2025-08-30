@@ -473,6 +473,11 @@ function applyEdit(sheetName, row, col, newValue, cell) {
 		}
 	}
 
+	// Salva il valore precedente per sapere se dobbiamo ricalcolare le medie
+	const previousValue = data[sheetName][row] ? data[sheetName][row][col] : '';
+	const isAmountChange = (col === 1 && row > 0); // Cambio nella colonna importi
+	const isDateChange = (col === 0 && row > 0); // Cambio nella colonna date
+
 	if (!data[sheetName][row]) data[sheetName][row] = [];
 	data[sheetName][row][col] = newValue;
 
@@ -497,10 +502,24 @@ function applyEdit(sheetName, row, col, newValue, cell) {
 
 		console.log(`Data automatica inserita: ${formattedDate} nella cella A${row + 1}`);
 
-		// NUOVA FUNZIONALITÀ: Mostra modal per la descrizione
+		// NUOVA FUNZIONALITÀ: Aggiorna tutte le medie mensili dopo aver inserito un importo
+		setTimeout(() => {
+			updateAllMonthlyAverages(sheetName);
+			console.log('Medie mensili aggiornate');
+		}, 100);
+
+		// Mostra modal per la descrizione
 		setTimeout(() => {
 			showDescriptionModal(row, sheetName);
-		}, 200); // Piccolo delay per permettere all'UI di aggiornarsi
+		}, 200);
+	}
+
+	// Se cambiamo una data o un importo manualmente (anche in modalità bypass), aggiorna le medie
+	if (bypassMode && (isAmountChange || isDateChange)) {
+		setTimeout(() => {
+			updateAllMonthlyAverages(sheetName);
+			console.log('Medie mensili aggiornate (modalità bypass)');
+		}, 100);
 	}
 
 	// Aggiorna UI (solo se non abbiamo già un input dentro)
@@ -513,9 +532,18 @@ function applyEdit(sheetName, row, col, newValue, cell) {
 		clearTimeout(window.__saveTimeout);
 		window.__saveTimeout = setTimeout(() => saveData(), 800);
 	}
-	// Se stiamo per mostrare la modal, il salvataggio avverrà dopo la conferma della descrizione
 }
 
+// Funzione da chiamare quando carichi i dati esistenti per ricalcolare tutte le medie
+function recalculateAllAverages() {
+	if (!workbook) return;
+
+	workbook.SheetNames.forEach(sheetName => {
+		updateAllMonthlyAverages(sheetName);
+	});
+
+	console.log('Tutte le medie mensili ricalcolate');
+}
 /* --------------------- Creazione / Eliminazione fogli --------------------- */
 function createNewSheet() {
 	if (!workbook) {
@@ -855,6 +883,11 @@ window.onload = async function () {
 
 	updateButtonStates();
 	initializeDescriptionModal();
+
+	// Ricalcola tutte le medie dopo aver caricato i dati
+	setTimeout(() => {
+		recalculateAllAverages();
+	}, 500);
 };
 
 // Funzione per eliminare la riga della cella selezionata
@@ -1055,4 +1088,94 @@ function setupDescriptionModalEvents() {
 // Aggiungi questa chiamata nella funzione window.onload
 function initializeDescriptionModal() {
 	setupDescriptionModalEvents();
+}
+
+// Funzione per estrarre mese e anno da una data italiana (gg/mm/aaaa)
+function getMonthYearFromDate(dateString) {
+	if (!dateString || typeof dateString !== 'string') return null;
+
+	// Gestisce formato italiano gg/mm/aaaa
+	const parts = dateString.trim().split('/');
+	if (parts.length !== 3) return null;
+
+	const day = parseInt(parts[0], 10);
+	const month = parseInt(parts[1], 10);
+	const year = parseInt(parts[2], 10);
+
+	// Validazione base
+	if (isNaN(day) || isNaN(month) || isNaN(year) || month < 1 || month > 12) {
+		return null;
+	}
+
+	// Restituisce una stringa "mm/aaaa" per il confronto
+	return `${month.toString().padStart(2, '0')}/${year}`;
+}
+
+// Funzione per calcolare la media degli importi di un mese specifico
+function calculateMonthlyAverage(sheetName, targetMonthYear) {
+	if (!data[sheetName]) return 0;
+
+	const sheetData = data[sheetName];
+	let totalAmount = 0;
+	let count = 0;
+
+	// Scorre tutte le righe (escludendo la prima riga di intestazioni)
+	for (let row = 1; row < sheetData.length; row++) {
+		const rowData = sheetData[row] || [];
+		const dateCell = rowData[0]; // Colonna A (data)
+		const amountCell = rowData[1]; // Colonna B (importo)
+
+		// Controlla se abbiamo sia data che importo
+		if (!dateCell || !amountCell) continue;
+
+		// Estrae mese/anno dalla data
+		const monthYear = getMonthYearFromDate(dateCell);
+		if (!monthYear || monthYear !== targetMonthYear) continue;
+
+		// Converte l'importo in numero
+		const amount = parseFloat(String(amountCell).replace(',', '.'));
+		if (!isNaN(amount)) {
+			totalAmount += amount;
+			count++;
+		}
+	}
+
+	return count > 0 ? totalAmount / count : 0;
+}
+
+// Funzione per aggiornare tutte le medie mensili nel foglio
+function updateAllMonthlyAverages(sheetName) {
+	if (!data[sheetName]) return;
+
+	const sheetData = data[sheetName];
+
+	// Scorre tutte le righe (escludendo la prima riga di intestazioni)
+	for (let row = 1; row < sheetData.length; row++) {
+		const rowData = sheetData[row] || [];
+		const dateCell = rowData[0]; // Colonna A (data)
+		const amountCell = rowData[1]; // Colonna B (importo)
+
+		// Se la riga ha data e importo, calcola e aggiorna la media
+		if (dateCell && amountCell) {
+			const monthYear = getMonthYearFromDate(dateCell);
+			if (monthYear) {
+				const average = calculateMonthlyAverage(sheetName, monthYear);
+
+				// Aggiorna i dati nella colonna D (index 3)
+				if (!data[sheetName][row]) data[sheetName][row] = [];
+				data[sheetName][row][3] = average > 0 ? average.toLocaleString('it-IT', {
+					minimumFractionDigits: 2,
+					maximumFractionDigits: 2
+				}) : '';
+
+				// Aggiorna la cella visibile della colonna D se esiste
+				const averageCell = document.querySelector(`td.cell[data-row="${row}"][data-col="3"]`);
+				if (averageCell) {
+					averageCell.innerHTML = average > 0 ? escapeHtml(data[sheetName][row][3]) : '';
+					// Aggiungi una classe CSS per distinguere le celle calcolate
+					averageCell.classList.add('calculated-cell');
+				}
+			}
+		}
+	}
 }

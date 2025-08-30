@@ -441,3 +441,22 @@ button.primary:hover {
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
+
+/* CSS per celle con valori calcolati (medie mensili) */
+.calculated-cell {
+    background-color: #f8f9fa !important;
+    color: #6c757d;
+    font-style: italic;
+    text-align: right;
+    font-weight: 500;
+    border-left: 3px solid #28a745 !important;
+}
+
+.calculated-cell:hover {
+    background-color: #e9ecef !important;
+}
+
+.calculated-cell.selected {
+    background-color: #d1ecf1 !important;
+    color: #0c5460;
+}
