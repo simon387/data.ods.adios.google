@@ -474,7 +474,6 @@ function applyEdit(sheetName, row, col, newValue, cell) {
 	}
 
 	// Salva il valore precedente per sapere se dobbiamo ricalcolare le medie
-	const previousValue = data[sheetName][row] ? data[sheetName][row][col] : '';
 	const isAmountChange = (col === 1 && row > 0); // Cambio nella colonna importi
 	const isDateChange = (col === 0 && row > 0); // Cambio nella colonna date
 
@@ -502,10 +501,9 @@ function applyEdit(sheetName, row, col, newValue, cell) {
 
 		console.log(`Data automatica inserita: ${formattedDate} nella cella A${row + 1}`);
 
-		// NUOVA FUNZIONALITÀ: Aggiorna tutte le medie mensili dopo aver inserito un importo
+		// Aggiorna le medie mensili dopo aver inserito un importo
 		setTimeout(() => {
 			updateAllMonthlyAverages(sheetName);
-			console.log('Medie mensili aggiornate');
 		}, 100);
 
 		// Mostra modal per la descrizione
@@ -518,7 +516,6 @@ function applyEdit(sheetName, row, col, newValue, cell) {
 	if (bypassMode && (isAmountChange || isDateChange)) {
 		setTimeout(() => {
 			updateAllMonthlyAverages(sheetName);
-			console.log('Medie mensili aggiornate (modalità bypass)');
 		}, 100);
 	}
 
@@ -542,8 +539,9 @@ function recalculateAllAverages() {
 		updateAllMonthlyAverages(sheetName);
 	});
 
-	console.log('Tutte le medie mensili ricalcolate');
+	console.log('Tutte le medie mensili ricalcolate (ultimo giorno OR ultima riga)');
 }
+
 /* --------------------- Creazione / Eliminazione fogli --------------------- */
 function createNewSheet() {
 	if (!workbook) {
@@ -1107,8 +1105,49 @@ function getMonthYearFromDate(dateString) {
 		return null;
 	}
 
-	// Restituisce una stringa "mm/aaaa" per il confronto
-	return `${month.toString().padStart(2, '0')}/${year}`;
+	// Restituisce oggetto con informazioni complete
+	return {
+		day: day,
+		month: month,
+		year: year,
+		monthYear: `${month.toString().padStart(2, '0')}/${year}`
+	};
+}
+
+// Funzione per ottenere l'ultimo giorno di un mese
+function getLastDayOfMonth(month, year) {
+	// Crea una data per il primo giorno del mese successivo, poi sottrae un giorno
+	return new Date(year, month, 0).getDate();
+}
+
+// Funzione per controllare se una data è l'ultimo giorno del mese
+function isLastDayOfMonth(dateString) {
+	const dateInfo = getMonthYearFromDate(dateString);
+	if (!dateInfo) return false;
+
+	const lastDay = getLastDayOfMonth(dateInfo.month, dateInfo.year);
+	return dateInfo.day === lastDay;
+}
+
+// Funzione per trovare l'ultima riga con dati nell'intero foglio
+function findLastRowOfSheet(sheetName) {
+	if (!data[sheetName]) return -1;
+
+	const sheetData = data[sheetName];
+
+	// Scorre dal fondo verso l'alto per trovare l'ultima riga con dati
+	for (let row = sheetData.length - 1; row >= 1; row--) {
+		const rowData = sheetData[row] || [];
+		const dateCell = rowData[0];
+		const amountCell = rowData[1];
+
+		// Se la riga ha sia data che importo, è l'ultima riga con dati
+		if (dateCell && amountCell) {
+			return row;
+		}
+	}
+
+	return -1;
 }
 
 // Funzione per calcolare la media degli importi di un mese specifico
@@ -1129,8 +1168,8 @@ function calculateMonthlyAverage(sheetName, targetMonthYear) {
 		if (!dateCell || !amountCell) continue;
 
 		// Estrae mese/anno dalla data
-		const monthYear = getMonthYearFromDate(dateCell);
-		if (!monthYear || monthYear !== targetMonthYear) continue;
+		const dateInfo = getMonthYearFromDate(dateCell);
+		if (!dateInfo || dateInfo.monthYear !== targetMonthYear) continue;
 
 		// Converte l'importo in numero
 		const amount = parseFloat(String(amountCell).replace(',', '.'));
@@ -1143,38 +1182,83 @@ function calculateMonthlyAverage(sheetName, targetMonthYear) {
 	return count > 0 ? totalAmount / count : 0;
 }
 
-// Funzione per aggiornare tutte le medie mensili nel foglio
+// Funzione per aggiornare le medie mensili secondo le due regole
 function updateAllMonthlyAverages(sheetName) {
 	if (!data[sheetName]) return;
 
 	const sheetData = data[sheetName];
 
-	// Scorre tutte le righe (escludendo la prima riga di intestazioni)
+	// Prima cancella tutte le medie esistenti
+	for (let row = 1; row < sheetData.length; row++) {
+		if (data[sheetName][row]) {
+			data[sheetName][row][3] = ''; // Pulisce colonna D
+		}
+
+		// Rimuovi anche dalla UI
+		const averageCell = document.querySelector(`td.cell[data-row="${row}"][data-col="3"]`);
+		if (averageCell) {
+			averageCell.innerHTML = '';
+			averageCell.classList.remove('calculated-cell');
+		}
+	}
+
+	// Trova l'ultima riga dell'intero foglio
+	const lastRowOfSheet = findLastRowOfSheet(sheetName);
+
+	// Scorre tutte le righe per applicare le due regole
 	for (let row = 1; row < sheetData.length; row++) {
 		const rowData = sheetData[row] || [];
 		const dateCell = rowData[0]; // Colonna A (data)
 		const amountCell = rowData[1]; // Colonna B (importo)
 
-		// Se la riga ha data e importo, calcola e aggiorna la media
-		if (dateCell && amountCell) {
-			const monthYear = getMonthYearFromDate(dateCell);
-			if (monthYear) {
-				const average = calculateMonthlyAverage(sheetName, monthYear);
+		// Se la riga non ha data e importo, salta
+		if (!dateCell || !amountCell) continue;
 
+		const dateInfo = getMonthYearFromDate(dateCell);
+		if (!dateInfo) continue;
+
+		let shouldShowAverage = false;
+		let reason = '';
+
+		// PRIMO CASO: È l'ultimo giorno del mese
+		if (isLastDayOfMonth(dateCell)) {
+			shouldShowAverage = true;
+			reason = `Ultimo giorno del mese (${dateInfo.day})`;
+		}
+
+		// SECONDO CASO: È l'ultima riga dell'intero foglio
+		if (row === lastRowOfSheet) {
+			shouldShowAverage = true;
+			if (reason) {
+				reason += ' + Ultima riga del foglio';
+			} else {
+				reason = 'Ultima riga del foglio';
+			}
+		}
+
+		// Se una delle due condizioni è vera, calcola e mostra la media
+		if (shouldShowAverage) {
+			const average = calculateMonthlyAverage(sheetName, dateInfo.monthYear);
+
+			if (average > 0) {
 				// Aggiorna i dati nella colonna D (index 3)
 				if (!data[sheetName][row]) data[sheetName][row] = [];
-				data[sheetName][row][3] = average > 0 ? average.toLocaleString('it-IT', {
+				data[sheetName][row][3] = average.toLocaleString('it-IT', {
 					minimumFractionDigits: 2,
 					maximumFractionDigits: 2
-				}) : '';
+				});
 
 				// Aggiorna la cella visibile della colonna D se esiste
 				const averageCell = document.querySelector(`td.cell[data-row="${row}"][data-col="3"]`);
 				if (averageCell) {
-					averageCell.innerHTML = average > 0 ? escapeHtml(data[sheetName][row][3]) : '';
-					// Aggiungi una classe CSS per distinguere le celle calcolate
+					averageCell.innerHTML = escapeHtml(data[sheetName][row][3]);
 					averageCell.classList.add('calculated-cell');
+
+					// Aggiungi tooltip con informazioni sul calcolo
+					averageCell.title = `Media mensile (${dateInfo.monthYear}) - ${reason}`;
 				}
+
+				console.log(`Media mensile ${dateInfo.monthYear}: ${data[sheetName][row][3]} inserita nella riga ${row + 1} (${reason})`);
 			}
 		}
 	}

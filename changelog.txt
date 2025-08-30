@@ -1,3 +1,6 @@
+Version 1.1.1
+- fix automatic average calculation bug
+
 Version 1.1.0
 - added unlock rule button
 - added delete row button
