@@ -34,5 +34,5 @@ class Config
 + ~~modale dopo che inserisci importo~~
 + ~~template data~~
 + ~~calcoli~~
-+ formattazione importi, fissi 2 decimali e simbolo dell'euro?
++ ~~formattazione importi, fissi 2 decimali e simbolo dell'euro?~~
 + autoscroll

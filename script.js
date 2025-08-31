@@ -510,6 +510,12 @@ function applyEdit(sheetName, row, col, newValue, cell) {
 
 			return; // Non salvare il valore non valido
 		}
+
+		// Formatta automaticamente l'importo in euro
+		const formattedAmount = formatAsEuro(newValue);
+		if (formattedAmount) {
+			newValue = formattedAmount;
+		}
 	}
 
 	// Salva il valore precedente per sapere se dobbiamo ricalcolare le medie
@@ -533,7 +539,7 @@ function applyEdit(sheetName, row, col, newValue, cell) {
 		data[sheetName][row][0] = formattedDate;
 
 		// Aggiorna anche la cella visibile della colonna A se esiste
-		const dateCell = document.querySelector(`td.cell[data-row="${row}"][data-col="0"]`);
+		const dateCell = document.querySelector(`td.cell[data-row="${row}"][data-col="0"], th.header-data-cell[data-row="${row}"][data-col="0"]`);
 		if (dateCell) {
 			dateCell.innerHTML = escapeHtml(formattedDate);
 		}
@@ -561,6 +567,14 @@ function applyEdit(sheetName, row, col, newValue, cell) {
 	// Aggiorna UI (solo se non abbiamo già un input dentro)
 	if (!cell.querySelector('input')) {
 		cell.innerHTML = escapeHtml(newValue);
+
+		// Se abbiamo appena formattato un importo, assicuriamoci che la UI si aggiorni
+		if (!bypassMode && col === 1 && row > 0 && newValue.includes('€')) {
+			// Forza un refresh della cella per mostrare la formattazione
+			setTimeout(() => {
+				cell.innerHTML = escapeHtml(newValue);
+			}, 50);
+		}
 	}
 
 	// Auto-save debounce (solo se non stiamo per mostrare la modal descrizione)
@@ -1263,9 +1277,9 @@ function calculateMonthlyAverage(sheetName, targetMonthYear) {
 		const dateInfo = getMonthYearFromDate(dateCell);
 		if (!dateInfo || dateInfo.monthYear !== targetMonthYear) continue;
 
-		// Converte l'importo in numero (gestisce sia formati grezzi che formattati)
-		const amount = parseEuroAmount(amountCell);
-		if (!isNaN(amount) && amount !== 0) {
+		// Converte l'importo in numero
+		const amount = parseFloat(String(amountCell).replace(',', '.'));
+		if (!isNaN(amount)) {
 			totalAmount += amount;
 			count++;
 		}
@@ -1368,22 +1382,13 @@ function updateAllMonthlyAverages(sheetName) {
 			if (!data[sheetName][row]) data[sheetName][row] = [];
 
 			// Colonna D (index 3): Media mensile
-			data[sheetName][row][3] = average.toLocaleString('it-IT', {
-				minimumFractionDigits: 2,
-				maximumFractionDigits: 2
-			});
+			data[sheetName][row][3] = formatAsEuro(average);
 
 			// Colonna E (index 4): Stima totale mensile
-			data[sheetName][row][4] = estimatedTotal.toLocaleString('it-IT', {
-				minimumFractionDigits: 2,
-				maximumFractionDigits: 2
-			});
+			data[sheetName][row][4] = formatAsEuro(estimatedTotal);
 
 			// Colonna F (index 5): Totale effettivo mensile
-			data[sheetName][row][5] = actualTotal.toLocaleString('it-IT', {
-				minimumFractionDigits: 2,
-				maximumFractionDigits: 2
-			});
+			data[sheetName][row][5] = formatAsEuro(actualTotal);
 
 			// Aggiorna le celle visibili
 			updateCalculatedCell(row, 3, data[sheetName][row][3], `Media mensile (${monthYear}) - ${reason}`);
@@ -1398,6 +1403,7 @@ function updateAllMonthlyAverages(sheetName) {
 		}
 	});
 }
+
 
 // Funzione per formattare un numero come importo in euro
 function formatAsEuro(value) {
