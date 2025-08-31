@@ -64,8 +64,10 @@ function toggleBypassMode() {
 	const deleteDocBtn = document.getElementById('delete-doc-btn');
 	const deleteRowBtn = document.getElementById('delete-row-btn');
 	const sheetTab = document.getElementById('sheet-tabs');
+	const cornici = document.querySelectorAll('.A1');
 
 	if (bypassMode) {
+		cornici.forEach(el => el.classList.remove('displaynone'));
 		loadXLSBtn.classList.remove('displaynone');
 		fileUploadBtn.classList.remove('displaynone');
 		createSheetBtn.classList.remove('displaynone');
@@ -79,6 +81,7 @@ function toggleBypassMode() {
 		bypassBtn.classList.remove('secondary');
 		showStatus('⚠️ Modalità bypass attivata - Tutte le regole disabilitate', 'error');
 	} else {
+		cornici.forEach(el => el.classList.add('displaynone'));
 		loadXLSBtn.classList.add('displaynone');
 		fileUploadBtn.classList.add('displaynone');
 		createSheetBtn.classList.add('displaynone');
@@ -230,14 +233,14 @@ function displaySheet(sheetName) {
 	let html = '<thead>';
 
 	// Prima riga dell'header: lettere delle colonne (A, B, C, ...)
-	html += '<tr><th></th>';
+	html += '<tr class="displaynone A1"><th></th>';
 	for (let col = 0; col < maxCols; col++) {
 		html += `<th>${colName(col)}</th>`;
 	}
 	html += '</tr>';
 
 	// Seconda riga dell'header: intestazioni dei dati (usando th invece di td)
-	html += '<tr><th class="row-header">1</th>';
+	html += '<tr><th class="row-header displaynone A1">1</th>';
 	for (let col = 0; col < maxCols; col++) {
 		const cellValue = (sheetData[0] && sheetData[0][col]) ? sheetData[0][col] : '';
 		html += `<th class="header-data-cell" data-row="0" data-col="${col}">${escapeHtml(cellValue)}</th>`;
@@ -248,7 +251,7 @@ function displaySheet(sheetName) {
 
 	// Righe dati (a partire dalla riga 1, dato che la riga 0 è ora nell'header)
 	for (let row = 1; row < maxRows; row++) {
-		html += `<tr><th class="row-header">${row + 1}</th>`;
+		html += `<tr><th class="row-header displaynone A1">${row + 1}</th>`;
 		for (let col = 0; col < maxCols; col++) {
 			const cellValue = (sheetData[row] && sheetData[row][col]) ? sheetData[row][col] : '';
 			html += `<td class="cell" data-row="${row}" data-col="${col}">${escapeHtml(cellValue)}</td>`;

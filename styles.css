@@ -487,3 +487,10 @@ th {
 .displaynone {
     display: none !important;
 }
+
+/* CSS */
+#spreadsheet-table td.cell, #spreadsheet-table th.header-data-cell {
+    min-height: 32px; /* o l'altezza che preferisci */
+    height: 32px;
+    vertical-align: middle;
+}
