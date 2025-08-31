@@ -1280,8 +1280,8 @@ function calculateMonthlyAverage(sheetName, targetMonthYear) {
 		const dateInfo = getMonthYearFromDate(dateCell);
 		if (!dateInfo || dateInfo.monthYear !== targetMonthYear) continue;
 
-		// Converte l'importo in numero
-		const amount = parseFloat(String(amountCell).replace(',', '.'));
+		// Usa parseEuroAmount per gestire correttamente i separatori delle migliaia
+		const amount = parseEuroAmount(amountCell);
 		if (!isNaN(amount)) {
 			totalAmount += amount;
 			count++;
@@ -1428,14 +1428,17 @@ function formatAsEuro(value) {
 function parseEuroAmount(formattedValue) {
 	if (!formattedValue || formattedValue === '') return 0;
 
-	// Rimuove il simbolo euro e spazi, poi converte virgola in punto
-	return parseFloat(String(formattedValue)
+	// Rimuove il simbolo euro, spazi e punti delle migliaia
+	const cleanValue = String(formattedValue)
 		.replace(' €', '')
 		.replace('€', '')
 		.replace(/\s/g, '')
-		.replace(',', '.')
-	) || 0;
+		.replace(/\./g, '') // rimuove i punti delle migliaia
+		.replace(',', '.'); // converte la virgola decimale in punto
+
+	return parseFloat(cleanValue) || 0;
 }
+
 
 function formatAllExistingAmounts(sheetName) {
 	if (!data[sheetName]) return;
