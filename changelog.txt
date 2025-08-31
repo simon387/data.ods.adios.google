@@ -1,3 +1,7 @@
+Version 1.2.1
+- avoiding duplicated calculations
+- better export file names
+
 Version 1.2.0
 - fix automatic average calculation bug
 - fix bug initializeDeleteRowButton

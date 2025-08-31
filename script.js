@@ -730,7 +730,7 @@ function exportExcel() {
 
 	const a = document.createElement('a');
 	a.href = url;
-	a.download = `documento_${new Date().toISOString().split('T')[0]}.xlsx`;
+	a.download = `backup_money_${new Date().toISOString().split('T')[0]}.xlsx`;
 	document.body.appendChild(a);
 	a.click();
 	document.body.removeChild(a);
