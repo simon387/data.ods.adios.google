@@ -36,4 +36,7 @@ class Config
 + ~~calcoli~~
 + ~~formattazione importi, fissi 2 decimali e simbolo dell'euro?~~
 + ~~autoscroll~~
++ ~~cambiare label~~
 + puoi ottimizzare e ripulire anche il js?
++ nascondere i numeri riga in mobilde
++ nascondere i fogli in mobile

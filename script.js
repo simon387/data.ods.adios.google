@@ -59,12 +59,12 @@ function toggleBypassMode() {
 	const bypassBtn = document.getElementById('bypass-btn');
 
 	if (bypassMode) {
-		bypassBtn.textContent = '🔓 Modalità Libera ATTIVA';
+		bypassBtn.textContent = '🔓';
 		bypassBtn.classList.add('danger');
 		bypassBtn.classList.remove('secondary');
 		showStatus('⚠️ Modalità bypass attivata - Tutte le regole disabilitate', 'error');
 	} else {
-		bypassBtn.textContent = '🔒 Abilita Modalità Libera';
+		bypassBtn.textContent = '🔒';
 		bypassBtn.classList.remove('danger');
 		bypassBtn.classList.add('secondary');
 		showStatus('✅ Modalità normale ripristinata - Regole riattivate', 'success');
