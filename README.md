@@ -38,5 +38,5 @@ class Config
 + ~~autoscroll~~
 + ~~cambiare label~~
 + puoi ottimizzare e ripulire anche il js?
-+ nascondere i numeri riga in mobilde
-+ nascondere i fogli in mobile
++ nascondere i numeri riga in mobile
++ nascondere i fogli e mostrarli solo in modalità libera, come anche tutti i pulsanti che di default sono display: none

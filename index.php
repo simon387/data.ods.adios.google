@@ -54,7 +54,7 @@ $currentVersion = getCurrentVersion();
 
 <div class="container">
 	<div class="spreadsheet">
-		<div class="sheet-tabs" id="sheet-tabs">
+		<div class="sheet-tabs" id="sheet-tabs" style="display: none">
 			<!-- I tab dei fogli verranno inseriti qui -->
 		</div>
 		<div class="grid-container">
