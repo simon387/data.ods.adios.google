@@ -571,12 +571,12 @@ button.primary:hover {
     }
 }
 
-/* Allineamento per la colonna B (importi) - allinea a destra */
-.cell[data-col="1"],
+/* La cella di intestazione "IMPORTO" mantiene il suo stile originale */
 .header-data-cell[data-col="1"] {
-    text-align: right !important;
-    font-family: 'Courier New', monospace; /* Font monospace per migliore allineamento numeri */
-    font-weight: 500;
+    /* Non applica text-align: right, mantiene text-align: center dall'header */
+    /* Mantiene il font originale dell'header, non monospace */
+    font-weight: bold !important;
+    text-transform: uppercase !important;
 }
 
 /* Allineamento per le colonne calcolati (D, E, F) - già allineati a destra dal CSS precedente */
@@ -586,12 +586,11 @@ button.primary:hover {
 }
 
 /* Quando l'utente sta editando la colonna importi, mantieni l'allineamento */
-.cell[data-col="1"] input,
-.header-data-cell[data-col="1"] input,
-.cell[data-col="1"][contenteditable],
-.header-data-cell[data-col="1"][contenteditable] {
+/* Allineamento per la colonna B (importi) - allinea a destra - SOLO per le righe dati */
+.cell[data-col="1"] {
     text-align: right !important;
-    font-family: 'Courier New', monospace;
+    font-family: 'Courier New', monospace; /* Font monospace per migliore allineamento numeri */
+    font-weight: 500;
 }
 
 /* Stile migliorato per tutti gli importi */
@@ -599,4 +598,27 @@ button.primary:hover {
 .calculated-cell:not(:empty) {
     /* Piccolo spazio dopo i numeri per respirare meglio */
     padding-right: 2px;
+}
+
+/* Quando l'utente sta editando la colonna importi, mantieni l'allineamento - SOLO per celle dati */
+.cell[data-col="1"] input,
+.cell[data-col="1"][contenteditable] {
+    text-align: right !important;
+    font-family: 'Courier New', monospace;
+}
+
+/* Per l'editing delle intestazioni, mantieni il comportamento normale */
+.header-data-cell[data-col="1"] input,
+.header-data-cell[data-col="1"][contenteditable] {
+    text-align: center !important;
+    font-weight: bold !important;
+    text-transform: uppercase !important;
+    font-family: Arial, sans-serif !important;
+}
+
+/* Stile migliorato per tutti gli importi nelle celle dati */
+.cell[data-col="1"]:not(:empty),
+.calculated-cell:not(:empty) {
+    /* Piccolo spazio dopo i numeri per respirare meglio */
+    padding-right: 4px;
 }
