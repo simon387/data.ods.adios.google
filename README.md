@@ -36,3 +36,4 @@ class Config
 + ~~calcoli~~
 + ~~formattazione importi, fissi 2 decimali e simbolo dell'euro?~~
 + ~~autoscroll~~
++ puoi ottimizzare e ripulire anche il js?
