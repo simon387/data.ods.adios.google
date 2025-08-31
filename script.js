@@ -355,14 +355,22 @@ function editCell(cell) {
 
 	console.log(`Editing cell ${colName(col)}${row + 1} in sheet "${sheetName}" with old value: "${oldValue}"`);
 
-	// Resto della funzione rimane uguale...
+	// Evita duplicare editor
 	if (cell.dataset.editing === 'true') {
 		return;
 	}
 	cell.dataset.editing = 'true';
 
+	// Per la colonna B (importi), converti il valore formattato in valore raw per l'editing
+	let editValue = oldValue;
+	if (col === 1 && oldValue.includes('€')) {
+		editValue = parseEuroAmount(oldValue).toString().replace('.', ',');
+	}
+
 	if (isMobile()) {
+		// MOBILE: contenteditable
 		cell.setAttribute('contenteditable', 'plaintext-only');
+		cell.textContent = editValue; // Mostra valore non formattato per l'editing
 		cell.focus({preventScroll: true});
 
 		requestAnimationFrame(() => {
@@ -397,13 +405,20 @@ function editCell(cell) {
 		cell.addEventListener('blur', onBlur);
 		cell.addEventListener('keydown', onKey);
 	} else {
+		// DESKTOP: input
 		const input = document.createElement('input');
 		input.type = 'text';
-		input.value = oldValue;
+		input.value = editValue; // Valore non formattato per l'editing
 		input.className = 'cell-input';
 		input.style.width = '100%';
 		input.style.boxSizing = 'border-box';
 		input.style.fontSize = '14px';
+
+		// Se è colonna importi, mantieni l'allineamento a destra
+		if (col === 1) {
+			input.style.textAlign = 'right';
+			input.style.fontFamily = "'Courier New', monospace";
+		}
 
 		cell.innerHTML = '';
 		cell.appendChild(input);
@@ -445,14 +460,16 @@ function editCell(cell) {
 function isValidAmount(value) {
 	if (!value || value.trim() === '') return true; // Celle vuote sono valide
 
+	// Se contiene già il simbolo euro, prova a convertirlo
+	if (value.includes('€')) {
+		const parsed = parseEuroAmount(value);
+		return !isNaN(parsed) && parsed !== 0;
+	}
+
 	// Rimuovi spazi e converti virgole in punti per la validazione
 	const cleanValue = value.trim().replace(',', '.');
 
-	// Regex per importi validi:
-	// - Può iniziare con + o - (opzionale)
-	// - Deve avere almeno una cifra
-	// - Può avere decimali con punto o virgola
-	// - Esempi validi: 123, 123.45, 123,45, -123.45, +123, 0.5, .5
+	// Regex per importi validi
 	const amountRegex = /^[+-]?(\d+([.,]\d+)?|[.,]\d+)$/;
 
 	return amountRegex.test(cleanValue);
@@ -904,6 +921,7 @@ window.onload = async function () {
 	updateButtonStates();
 	initializeDescriptionModal();
 	initializeDeleteRowButton();
+	formatAllSheetsAmounts();
 
 	// Ricalcola tutte le medie dopo aver caricato i dati
 	setTimeout(() => {
@@ -1198,8 +1216,8 @@ function calculateMonthlyTotal(sheetName, targetMonthYear) {
 		const dateInfo = getMonthYearFromDate(dateCell);
 		if (!dateInfo || dateInfo.monthYear !== targetMonthYear) continue;
 
-		// Converte l'importo in numero
-		const amount = parseFloat(String(amountCell).replace(',', '.'));
+		// Converte l'importo in numero (gestisce sia formati grezzi che formattati)
+		const amount = parseEuroAmount(amountCell);
 		if (!isNaN(amount)) {
 			totalAmount += amount;
 		}
@@ -1207,6 +1225,7 @@ function calculateMonthlyTotal(sheetName, targetMonthYear) {
 
 	return totalAmount;
 }
+
 
 // Funzione helper per aggiornare una cella calcolata
 function updateCalculatedCell(row, col, value, tooltip) {
@@ -1244,9 +1263,9 @@ function calculateMonthlyAverage(sheetName, targetMonthYear) {
 		const dateInfo = getMonthYearFromDate(dateCell);
 		if (!dateInfo || dateInfo.monthYear !== targetMonthYear) continue;
 
-		// Converte l'importo in numero
-		const amount = parseFloat(String(amountCell).replace(',', '.'));
-		if (!isNaN(amount)) {
+		// Converte l'importo in numero (gestisce sia formati grezzi che formattati)
+		const amount = parseEuroAmount(amountCell);
+		if (!isNaN(amount) && amount !== 0) {
 			totalAmount += amount;
 			count++;
 		}
@@ -1378,4 +1397,79 @@ function updateAllMonthlyAverages(sheetName) {
 			console.log(`- Totale effettivo: ${data[sheetName][row][5]}`);
 		}
 	});
+}
+
+// Funzione per formattare un numero come importo in euro
+function formatAsEuro(value) {
+	if (!value || value === '' || isNaN(parseFloat(String(value).replace(',', '.')))) {
+		return '';
+	}
+
+	// Converte in numero (gestisce sia punto che virgola come decimali)
+	const number = parseFloat(String(value).replace(',', '.'));
+
+	// Formatta con 2 decimali, virgola come separatore decimale e simbolo euro
+	return number.toLocaleString('it-IT', {
+		minimumFractionDigits: 2,
+		maximumFractionDigits: 2
+	}) + ' €';
+}
+
+// Funzione per convertire un importo formattato in numero per i calcoli
+function parseEuroAmount(formattedValue) {
+	if (!formattedValue || formattedValue === '') return 0;
+
+	// Rimuove il simbolo euro e spazi, poi converte virgola in punto
+	return parseFloat(String(formattedValue)
+		.replace(' €', '')
+		.replace('€', '')
+		.replace(/\s/g, '')
+		.replace(',', '.')
+	) || 0;
+}
+
+function formatAllExistingAmounts(sheetName) {
+	if (!data[sheetName]) return;
+
+	const sheetData = data[sheetName];
+	let formattedCount = 0;
+
+	// Scorre tutte le righe (escludendo la prima riga di intestazioni)
+	for (let row = 1; row < sheetData.length; row++) {
+		const rowData = sheetData[row] || [];
+		const amountCell = rowData[1]; // Colonna B (importo)
+
+		// Se c'è un importo e non è già formattato
+		if (amountCell && !String(amountCell).includes('€')) {
+			const formatted = formatAsEuro(amountCell);
+			if (formatted && formatted !== amountCell) {
+				data[sheetName][row][1] = formatted;
+
+				// Aggiorna anche la cella visibile
+				const cell = document.querySelector(`td.cell[data-row="${row}"][data-col="1"], th.header-data-cell[data-row="${row}"][data-col="1"]`);
+				if (cell) {
+					cell.innerHTML = escapeHtml(formatted);
+				}
+
+				formattedCount++;
+			}
+		}
+	}
+
+	// Ricalcola le medie dopo aver formattato
+	if (formattedCount > 0) {
+		updateAllMonthlyAverages(sheetName);
+		console.log(`Formattati ${formattedCount} importi in formato Euro`);
+		showStatus(`${formattedCount} importi formattati in Euro`, 'success');
+	}
+}
+
+function formatAllSheetsAmounts() {
+	if (!workbook) return;
+
+	workbook.SheetNames.forEach(sheetName => {
+		formatAllExistingAmounts(sheetName);
+	});
+
+	console.log('Tutti gli importi esistenti formattati in Euro');
 }

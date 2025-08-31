@@ -570,3 +570,33 @@ button.primary:hover {
         z-index: 10;
     }
 }
+
+/* Allineamento per la colonna B (importi) - allinea a destra */
+.cell[data-col="1"],
+.header-data-cell[data-col="1"] {
+    text-align: right !important;
+    font-family: 'Courier New', monospace; /* Font monospace per migliore allineamento numeri */
+    font-weight: 500;
+}
+
+/* Allineamento per le colonne calcolati (D, E, F) - già allineati a destra dal CSS precedente */
+.calculated-cell {
+    text-align: right !important;
+    font-family: 'Courier New', monospace; /* Font monospace per migliore allineamento numeri */
+}
+
+/* Quando l'utente sta editando la colonna importi, mantieni l'allineamento */
+.cell[data-col="1"] input,
+.header-data-cell[data-col="1"] input,
+.cell[data-col="1"][contenteditable],
+.header-data-cell[data-col="1"][contenteditable] {
+    text-align: right !important;
+    font-family: 'Courier New', monospace;
+}
+
+/* Stile migliorato per tutti gli importi */
+.cell[data-col="1"]:not(:empty)::after,
+.calculated-cell:not(:empty) {
+    /* Piccolo spazio dopo i numeri per respirare meglio */
+    padding-right: 2px;
+}
