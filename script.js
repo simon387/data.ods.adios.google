@@ -73,6 +73,7 @@ function toggleBypassMode() {
 	updateDeleteRowButtonState();
 }
 
+
 function isMobile() {
 	return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
 		|| (('ontouchstart' in window) && window.innerWidth <= 1024);
@@ -909,17 +910,16 @@ function deleteSelectedRow() {
 	const row = parseInt(selectedCell.dataset.row, 10);
 	const sheetName = workbook ? workbook.SheetNames[currentSheet] : Object.keys(data)[currentSheet];
 
-	// In modalità libera permetti anche eliminazione delle intestazioni con avviso speciale
-	let confirmMessage = `Sei sicuro di voler eliminare la riga ${row + 1}? Questa azione non può essere annullata.`;
-
+	// Non permettere eliminazione della prima riga (intestazioni)
 	if (row === 0) {
-		confirmMessage = `⚠️ ATTENZIONE: Stai per eliminare la riga delle INTESTAZIONI (riga 1)!\n\nQuesta azione rimuoverà completamente le intestazioni del foglio e non può essere annullata.\n\nSei davvero sicuro di voler procedere?`;
+		showStatus('Non puoi eliminare la riga delle intestazioni', 'error');
+		return;
 	}
 
 	// Mostra conferma prima di eliminare
 	showConfirmModal(
-		row === 0 ? '⚠️ Elimina Intestazioni' : 'Elimina Riga',
-		confirmMessage,
+		'Elimina Riga',
+		`Sei sicuro di voler eliminare la riga ${row + 1}? Questa azione non può essere annullata.`,
 		() => executeDeleteRow(row, sheetName)
 	);
 }
@@ -937,6 +937,12 @@ function executeDeleteRow(rowIndex, sheetName) {
 
 		// Deseleziona la cella eliminata
 		selectedCell = null;
+
+		// IMPORTANTE: Ricalcola tutte le medie/stime/totali dopo l'eliminazione
+		setTimeout(() => {
+			updateAllMonthlyAverages(sheetName);
+			console.log('Calcoli mensili aggiornati dopo eliminazione riga');
+		}, 100);
 
 		// Aggiorna lo stato del pulsante
 		updateDeleteRowButtonState();
@@ -957,7 +963,7 @@ function updateDeleteRowButtonState() {
 	if (!deleteRowBtn) return;
 
 	const hasSelection = selectedCell !== null;
-	const canDelete = bypassMode && hasSelection;
+	const canDelete = bypassMode && hasSelection && selectedCell && parseInt(selectedCell.dataset.row, 10) > 0;
 
 	deleteRowBtn.disabled = !canDelete;
 
@@ -968,7 +974,7 @@ function updateDeleteRowButtonState() {
 		deleteRowBtn.title = 'Seleziona una cella per eliminare la sua riga';
 		deleteRowBtn.classList.remove('disabled-bypass');
 	} else if (selectedCell && parseInt(selectedCell.dataset.row, 10) === 0) {
-		deleteRowBtn.title = '⚠️ Elimina riga intestazioni (ATTENZIONE!)';
+		deleteRowBtn.title = 'Non puoi eliminare la riga delle intestazioni';
 		deleteRowBtn.classList.remove('disabled-bypass');
 	} else {
 		deleteRowBtn.title = 'Elimina la riga selezionata';
