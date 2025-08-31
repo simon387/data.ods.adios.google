@@ -1,3 +1,6 @@
+Version 1.2.6
+- better labels
+
 Version 1.2.5
 - hidden tab div
 
