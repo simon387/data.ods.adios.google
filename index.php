@@ -38,23 +38,23 @@ $currentVersion = getCurrentVersion();
 <div class="header">
 	<h1>Money v<?php echo htmlspecialchars($currentVersion); ?></h1>
 	<div class="controls">
-		<button style="display: none" onclick="document.getElementById('file-upload').click()">
+		<button class="displaynone" id="load-xls-btn" onclick="document.getElementById('file-upload').click()">
 			📁 Carica Excel
 		</button>
-		<input style="display: none" type="file" id="file-upload" class="file-input" accept=".xlsx,.xls" onchange="loadFile(event)">
+		<input type="file" id="file-upload" class="file-input displaynone" accept=".xlsx,.xls" onchange="loadFile(event)">
 		<button onclick="saveData()" id="save-btn">💾</button>
 		<button onclick="exportExcel()">📤</button>
 		<button onclick="toggleBypassMode()" id="bypass-btn" class="secondary">🔒</button>
-		<button onclick="deleteSelectedRow()" id="delete-row-btn" class="danger" disabled>🗑️ Elimina Riga</button>
-		<button style="display: none" onclick="createNewSheet()">➕ Nuovo Foglio</button>
-		<button style="display: none" onclick="deleteCurrentSheet()" id="delete-sheet-btn" class="danger">🗑️ Elimina Foglio</button>
-		<button style="display: none" onclick="deleteDocument()" id="delete-doc-btn" class="danger">❌ Elimina Documento</button>
+		<button onclick="createNewSheet()" class="displaynone" id="create-sheet-btn">➕ Nuovo Foglio</button>
+		<button onclick="deleteSelectedRow()" id="delete-row-btn" class="danger displaynone" disabled>🗑️ Elimina Riga</button>
+		<button onclick="deleteCurrentSheet()" id="delete-sheet-btn" class="danger displaynone">🗑️ Elimina Foglio</button>
+		<button onclick="deleteDocument()" id="delete-doc-btn" class="danger displaynone">❌ Elimina Documento</button>
 	</div>
 </div>
 
 <div class="container">
 	<div class="spreadsheet">
-		<div class="sheet-tabs" id="sheet-tabs" style="display: none">
+		<div class="sheet-tabs displaynone" id="sheet-tabs">
 			<!-- I tab dei fogli verranno inseriti qui -->
 		</div>
 		<div class="grid-container">

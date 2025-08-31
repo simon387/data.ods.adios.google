@@ -37,6 +37,6 @@ class Config
 + ~~formattazione importi, fissi 2 decimali e simbolo dell'euro?~~
 + ~~autoscroll~~
 + ~~cambiare label~~
++ ~~nascondere i fogli e mostrarli solo in modalità libera, come anche tutti i pulsanti che di default sono display: none~~
 + puoi ottimizzare e ripulire anche il js?
 + nascondere i numeri riga e le lettere delle colonne in modalità non libera
-+ nascondere i fogli e mostrarli solo in modalità libera, come anche tutti i pulsanti che di default sono display: none

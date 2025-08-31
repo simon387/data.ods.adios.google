@@ -483,3 +483,7 @@ th {
         padding: 10px;
     }
 }
+
+.displaynone {
+    display: none !important;
+}

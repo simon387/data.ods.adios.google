@@ -57,13 +57,36 @@ const AUTO_SCROLL_THRESHOLD = 50; // Configurazione: da quante righe iniziare l'
 function toggleBypassMode() {
 	bypassMode = !bypassMode;
 	const bypassBtn = document.getElementById('bypass-btn');
+	const loadXLSBtn = document.getElementById('load-xls-btn');
+	const fileUploadBtn = document.getElementById('file-upload');
+	const createSheetBtn = document.getElementById('create-sheet-btn');
+	const deleteSheetBtn = document.getElementById('delete-sheet-btn');
+	const deleteDocBtn = document.getElementById('delete-doc-btn');
+	const deleteRowBtn = document.getElementById('delete-row-btn');
+	const sheetTab = document.getElementById('sheet-tabs');
 
 	if (bypassMode) {
+		loadXLSBtn.classList.remove('displaynone');
+		fileUploadBtn.classList.remove('displaynone');
+		createSheetBtn.classList.remove('displaynone');
+		createSheetBtn.classList.remove('displaynone');
+		deleteSheetBtn.classList.remove('displaynone');
+		deleteDocBtn.classList.remove('displaynone');
+		deleteRowBtn.classList.remove('displaynone');
+		sheetTab.classList.remove('displaynone');
 		bypassBtn.textContent = '🔓';
 		bypassBtn.classList.add('danger');
 		bypassBtn.classList.remove('secondary');
 		showStatus('⚠️ Modalità bypass attivata - Tutte le regole disabilitate', 'error');
 	} else {
+		loadXLSBtn.classList.add('displaynone');
+		fileUploadBtn.classList.add('displaynone');
+		createSheetBtn.classList.add('displaynone');
+		createSheetBtn.classList.add('displaynone');
+		deleteSheetBtn.classList.add('displaynone');
+		deleteDocBtn.classList.add('displaynone');
+		deleteRowBtn.classList.add('displaynone');
+		sheetTab.classList.add('displaynone');
 		bypassBtn.textContent = '🔒';
 		bypassBtn.classList.remove('danger');
 		bypassBtn.classList.add('secondary');

@@ -1,3 +1,6 @@
+Version 1.2.8
+- added show hidden features
+
 Version 1.2.7
 - refactored js and html code
 
