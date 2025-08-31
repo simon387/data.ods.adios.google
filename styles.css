@@ -460,3 +460,38 @@ button.primary:hover {
     background-color: #d1ecf1 !important;
     color: #0c5460;
 }
+
+/* CSS per celle con valori calcolati (base) */
+.calculated-cell {
+    color: #495057;
+    font-style: italic;
+    text-align: right;
+    font-weight: 500;
+}
+
+.calculated-cell:hover {
+    background-color: #e9ecef !important;
+}
+
+.calculated-cell.selected {
+    background-color: #d1ecf1 !important;
+    color: #0c5460;
+}
+
+/* CSS specifico per media mensile (colonna D) */
+.calculated-average {
+    background-color: #d4edda !important;
+    border-left: 3px solid #28a745 !important;
+}
+
+/* CSS specifico per stima totale (colonna E) */
+.calculated-estimated {
+    background-color: #fff3cd !important;
+    border-left: 3px solid #ffc107 !important;
+}
+
+/* CSS specifico per totale effettivo (colonna F) */
+.calculated-total {
+    background-color: #d1ecf1 !important;
+    border-left: 3px solid #17a2b8 !important;
+}

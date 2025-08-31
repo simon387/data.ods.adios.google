@@ -1156,6 +1156,51 @@ function findLastRowOfSheet(sheetName) {
 	return -1;
 }
 
+// Funzione per calcolare il totale effettivo degli importi di un mese specifico
+function calculateMonthlyTotal(sheetName, targetMonthYear) {
+	if (!data[sheetName]) return 0;
+
+	const sheetData = data[sheetName];
+	let totalAmount = 0;
+
+	// Scorre tutte le righe (escludendo la prima riga di intestazioni)
+	for (let row = 1; row < sheetData.length; row++) {
+		const rowData = sheetData[row] || [];
+		const dateCell = rowData[0]; // Colonna A (data)
+		const amountCell = rowData[1]; // Colonna B (importo)
+
+		// Controlla se abbiamo sia data che importo
+		if (!dateCell || !amountCell) continue;
+
+		// Estrae mese/anno dalla data
+		const dateInfo = getMonthYearFromDate(dateCell);
+		if (!dateInfo || dateInfo.monthYear !== targetMonthYear) continue;
+
+		// Converte l'importo in numero
+		const amount = parseFloat(String(amountCell).replace(',', '.'));
+		if (!isNaN(amount)) {
+			totalAmount += amount;
+		}
+	}
+
+	return totalAmount;
+}
+
+// Funzione helper per aggiornare una cella calcolata
+function updateCalculatedCell(row, col, value, tooltip) {
+	const cell = document.querySelector(`td.cell[data-row="${row}"][data-col="${col}"]`);
+	if (cell) {
+		cell.innerHTML = escapeHtml(value);
+		cell.classList.add('calculated-cell');
+		cell.title = tooltip;
+
+		// Aggiungi classe specifica per tipo di calcolo
+		if (col === 3) cell.classList.add('calculated-average');
+		if (col === 4) cell.classList.add('calculated-estimated');
+		if (col === 5) cell.classList.add('calculated-total');
+	}
+}
+
 // Funzione per calcolare la media degli importi di un mese specifico
 function calculateMonthlyAverage(sheetName, targetMonthYear) {
 	if (!data[sheetName]) return 0;
@@ -1194,17 +1239,21 @@ function updateAllMonthlyAverages(sheetName) {
 
 	const sheetData = data[sheetName];
 
-	// Prima cancella tutte le medie esistenti
+	// Prima cancella tutte le celle calcolate esistenti (colonne D, E, F)
 	for (let row = 1; row < sheetData.length; row++) {
 		if (data[sheetName][row]) {
-			data[sheetName][row][3] = ''; // Pulisce colonna D
+			data[sheetName][row][3] = ''; // Pulisce colonna D (media)
+			data[sheetName][row][4] = ''; // Pulisce colonna E (stima)
+			data[sheetName][row][5] = ''; // Pulisce colonna F (totale)
 		}
 
 		// Rimuovi anche dalla UI
-		const averageCell = document.querySelector(`td.cell[data-row="${row}"][data-col="3"]`);
-		if (averageCell) {
-			averageCell.innerHTML = '';
-			averageCell.classList.remove('calculated-cell');
+		for (let col = 3; col <= 5; col++) {
+			const cell = document.querySelector(`td.cell[data-row="${row}"][data-col="${col}"]`);
+			if (cell) {
+				cell.innerHTML = '';
+				cell.classList.remove('calculated-cell', 'calculated-average', 'calculated-estimated', 'calculated-total');
+			}
 		}
 	}
 
@@ -1242,29 +1291,45 @@ function updateAllMonthlyAverages(sheetName) {
 			}
 		}
 
-		// Se una delle due condizioni è vera, calcola e mostra la media
+		// Se una delle due condizioni è vera, calcola e mostra media, stima e totale
 		if (shouldShowAverage) {
 			const average = calculateMonthlyAverage(sheetName, dateInfo.monthYear);
+			const actualTotal = calculateMonthlyTotal(sheetName, dateInfo.monthYear);
 
 			if (average > 0) {
-				// Aggiorna i dati nella colonna D (index 3)
+				// Calcola la stima del totale mensile (media × giorni del mese)
+				const daysInMonth = getLastDayOfMonth(dateInfo.month, dateInfo.year);
+				const estimatedTotal = average * daysInMonth;
+
 				if (!data[sheetName][row]) data[sheetName][row] = [];
+
+				// Colonna D (index 3): Media mensile
 				data[sheetName][row][3] = average.toLocaleString('it-IT', {
 					minimumFractionDigits: 2,
 					maximumFractionDigits: 2
 				});
 
-				// Aggiorna la cella visibile della colonna D se esiste
-				const averageCell = document.querySelector(`td.cell[data-row="${row}"][data-col="3"]`);
-				if (averageCell) {
-					averageCell.innerHTML = escapeHtml(data[sheetName][row][3]);
-					averageCell.classList.add('calculated-cell');
+				// Colonna E (index 4): Stima totale mensile
+				data[sheetName][row][4] = estimatedTotal.toLocaleString('it-IT', {
+					minimumFractionDigits: 2,
+					maximumFractionDigits: 2
+				});
 
-					// Aggiungi tooltip con informazioni sul calcolo
-					averageCell.title = `Media mensile (${dateInfo.monthYear}) - ${reason}`;
-				}
+				// Colonna F (index 5): Totale effettivo mensile
+				data[sheetName][row][5] = actualTotal.toLocaleString('it-IT', {
+					minimumFractionDigits: 2,
+					maximumFractionDigits: 2
+				});
 
-				console.log(`Media mensile ${dateInfo.monthYear}: ${data[sheetName][row][3]} inserita nella riga ${row + 1} (${reason})`);
+				// Aggiorna le celle visibili
+				updateCalculatedCell(row, 3, data[sheetName][row][3], `Media mensile (${dateInfo.monthYear}) - ${reason}`);
+				updateCalculatedCell(row, 4, data[sheetName][row][4], `Stima totale mensile (${dateInfo.monthYear}) - Media × ${daysInMonth} giorni`);
+				updateCalculatedCell(row, 5, data[sheetName][row][5], `Totale effettivo mensile (${dateInfo.monthYear}) - Somma di tutti gli importi`);
+
+				console.log(`Calcoli mensili ${dateInfo.monthYear} nella riga ${row + 1}:`);
+				console.log(`- Media: ${data[sheetName][row][3]}`);
+				console.log(`- Stima totale: ${data[sheetName][row][4]} (${daysInMonth} giorni)`);
+				console.log(`- Totale effettivo: ${data[sheetName][row][5]}`);
 			}
 		}
 	}
