@@ -49,6 +49,7 @@ let pendingAction = null;
 const STARTING_EDITABLE_ROW = 1; // Cambia questo numero per impostare da quale riga iniziare (0-based)
 let bypassMode = false;
 let descriptionModalData = null; // Variabile per tenere traccia dei dati della modal descrizione
+const AUTO_SCROLL_THRESHOLD = 50; // Configurazione: da quante righe iniziare l'auto-scroll
 
 /* --------------------- Utility --------------------- */
 
@@ -210,7 +211,7 @@ function displaySheet(sheetName) {
 
 	const sheetData = data[sheetName];
 	const maxCols = Math.max(6, ...sheetData.map(row => row.length || 0)); // MOSTRA SOLO 6 COLONNE, QUINDI FINO ALLA LETTERA F
-	const maxRows = Math.max(64, sheetData.length);
+	const maxRows = Math.max(64, sheetData.length + 10); // +10 righe vuote extra per comodità
 
 	// Crea header a due righe: lettere delle colonne + intestazioni dei dati
 	let html = '<thead>';
@@ -249,6 +250,9 @@ function displaySheet(sheetName) {
 
 	// Attacca listener alle celle (desktop + mobile) - incluse quelle nell'header
 	attachCellListeners(table);
+
+	// Auto-scroll al fondo se ci sono molte righe
+	autoScrollToBottom(sheetName);
 }
 
 function escapeHtml(s) {
@@ -1479,3 +1483,56 @@ function formatAllSheetsAmounts() {
 
 	console.log('Tutti gli importi esistenti formattati in Euro');
 }
+
+// Funzione per contare le righe con dati reali (non vuote)
+function countDataRows(sheetName) {
+	if (!data[sheetName]) return 0;
+
+	const sheetData = data[sheetName];
+	let dataRows = 0;
+
+	// Conta le righe che hanno almeno una cella con dati (escludendo intestazioni)
+	for (let row = 1; row < sheetData.length; row++) {
+		const rowData = sheetData[row] || [];
+		const hasData = rowData.some(cell => cell && String(cell).trim() !== '');
+
+		if (hasData) {
+			dataRows = row; // Salva l'indice dell'ultima riga con dati
+		}
+	}
+
+	return dataRows;
+}
+
+// Funzione per scrollare automaticamente al fondo
+function autoScrollToBottom(sheetName) {
+	const dataRowsCount = countDataRows(sheetName);
+
+	// Se ci sono abbastanza righe, scrolla al fondo
+	if (dataRowsCount >= AUTO_SCROLL_THRESHOLD) {
+		const gridContainer = document.getElementById('spreadsheet-table').closest('.grid-container');
+		if (!gridContainer) return;
+
+		// Aspetta che la tabella sia completamente renderizzata
+		setTimeout(() => {
+			// Calcola la posizione di scroll per essere vicini al fondo ma con un po' di spazio
+			const containerHeight = gridContainer.clientHeight;
+			const scrollHeight = gridContainer.scrollHeight;
+			const headerHeight = 80; // Altezza approssimativa dell'header fisso
+
+			// Scrolla verso il fondo lasciando un po' di spazio per vedere alcune righe vuote
+			const targetScroll = scrollHeight - containerHeight + headerHeight + 200; // +200px per vedere righe vuote
+
+			gridContainer.scrollTo({
+				top: Math.max(0, targetScroll),
+				behavior: 'smooth' // Scroll animato
+			});
+
+			console.log(`Auto-scroll attivato: ${dataRowsCount} righe rilevate (soglia: ${AUTO_SCROLL_THRESHOLD})`);
+			showStatus(`📍 Auto-scroll: ${dataRowsCount} righe caricate, portato al fondo`, 'success');
+		}, 300); // Aspetta che la tabella sia completamente renderizzata
+	} else {
+		console.log(`Auto-scroll non necessario: solo ${dataRowsCount} righe (soglia: ${AUTO_SCROLL_THRESHOLD})`);
+	}
+}
+
