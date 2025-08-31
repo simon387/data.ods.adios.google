@@ -1,3 +1,6 @@
+Version 1.2.7
+- refactored js and html code
+
 Version 1.2.6
 - better labels
 

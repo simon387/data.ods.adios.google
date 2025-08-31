@@ -116,16 +116,6 @@ function findFirstEmptyRow(sheetName, startFromRow) {
 	return Math.max(sheetData.length, startFromRow);
 }
 
-// Funzione helper per controllare se una riga è modificabile
-function isRowEditable(row, sheetName) {
-	if (row === 0) return false; // Prima riga sempre non modificabile (intestazioni)
-
-	const firstEmptyRow = findFirstEmptyRow(sheetName, STARTING_EDITABLE_ROW);
-
-	// Modificabile solo se è la prima riga vuota
-	return row === firstEmptyRow;
-}
-
 /* --------------------- Caricamento file Excel --------------------- */
 function loadFile(event) {
 	const file = event.target.files[0];
@@ -477,23 +467,6 @@ function isValidAmount(value) {
 	const amountRegex = /^[+-]?(\d+([.,]\d+)?|[.,]\d+)$/;
 
 	return amountRegex.test(cleanValue);
-}
-
-// Funzione helper per formattare l'importo (opzionale)
-function formatAmount(value) {
-	if (!value || value.trim() === '') return '';
-
-	// Converti virgola in punto e parsea come numero
-	const cleanValue = value.trim().replace(',', '.');
-	const number = parseFloat(cleanValue);
-
-	if (isNaN(number)) return value; // Se non è un numero valido, restituisci il valore originale
-
-	// Formatta con 2 decimali e virgola come separatore decimale (stile italiano)
-	return number.toLocaleString('it-IT', {
-		minimumFractionDigits: 2,
-		maximumFractionDigits: 2
-	});
 }
 
 // funzione applyEdit per rispettare il bypass nella validazione
@@ -1535,4 +1508,3 @@ function autoScrollToBottom(sheetName) {
 		console.log(`Auto-scroll non necessario: solo ${dataRowsCount} righe (soglia: ${AUTO_SCROLL_THRESHOLD})`);
 	}
 }
-

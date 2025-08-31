@@ -16,7 +16,7 @@ function getCurrentVersion(): string
 	}
 
 	// Cerca la prima occorrenza di "Version X.X.X"
-	if (preg_match('/Version\s+([\d\.]+(?:\s+\w+)?)/i', $content, $matches)) {
+	if (preg_match('/Version\s+([\d.]+(?:\s+\w+)?)/i', $content, $matches)) {
 		return trim($matches[1]);
 	}
 
@@ -88,7 +88,7 @@ $currentVersion = getCurrentVersion();
 		<h3 id="description-modal-title">💰 Aggiungi Descrizione</h3>
 		<p>Hai inserito un nuovo importo. Vuoi aggiungere una descrizione?</p>
 		<div class="description-input-container">
-			<input
+			<label for="description-input"></label><input
 					type="text"
 					id="description-input"
 					placeholder="Es: Spesa supermercato, Stipendio, Bolletta luce..."
