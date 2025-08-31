@@ -209,7 +209,7 @@ function displaySheet(sheetName) {
 	if (!data[sheetName]) data[sheetName] = [[]];
 
 	const sheetData = data[sheetName];
-	const maxCols = Math.max(8, ...sheetData.map(row => row.length || 0));
+	const maxCols = Math.max(6, ...sheetData.map(row => row.length || 0)); // MOSTRA SOLO 6 COLONNE, QUINDI FINO ALLA LETTERA F
 	const maxRows = Math.max(64, sheetData.length);
 
 	// Crea header a due righe: lettere delle colonne + intestazioni dei dati
