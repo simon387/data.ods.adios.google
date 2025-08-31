@@ -495,3 +495,78 @@ button.primary:hover {
     background-color: #d1ecf1 !important;
     border-left: 3px solid #17a2b8 !important;
 }
+
+/* CSS per rendere l'intestazione fissa durante lo scroll */
+.grid-container {
+    overflow: auto;
+    max-height: 600px;
+    position: relative; /* Necessario per il posizionamento sticky */
+}
+
+/* Rende sticky tutto l'header della tabella */
+#spreadsheet-table thead {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background-color: #f8f9fa;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Assicura che TUTTE le celle dell'header abbiano sfondo opaco */
+#spreadsheet-table thead th {
+    background-color: #f8f9fa;
+    position: sticky;
+    top: 0;
+}
+
+/* Stile specifico per le celle di dati nella seconda riga dell'header */
+#spreadsheet-table thead .header-data-cell {
+    background-color: #e9ecef !important;
+    font-weight: bold;
+    text-transform: uppercase;
+    font-size: 14px;
+    letter-spacing: 0.5px;
+    color: #495057 !important;
+    text-align: center;
+    border-bottom: 2px solid #adb5bd;
+    cursor: cell;
+    transition: background 0.2s;
+}
+
+#spreadsheet-table thead .header-data-cell:hover {
+    background-color: #dee2e6 !important;
+}
+
+#spreadsheet-table thead .header-data-cell.selected {
+    background-color: #d1ecf1 !important;
+    outline: 2px solid #17a2b8 !important;
+    color: #0c5460 !important;
+}
+
+/* Stile migliorato per le intestazioni delle colonne quando sono sticky */
+#spreadsheet-table thead th:first-child {
+    /* Prima colonna (vuota) dell'header */
+    background-color: #e9ecef;
+}
+
+/* Stile per i row header nella seconda riga dell'header */
+#spreadsheet-table thead .row-header {
+    background-color: #f8f9fa;
+    font-weight: bold;
+    text-align: center;
+    min-width: 50px;
+}
+
+/* Media query per mobile - riduce l'altezza per vedere più contenuto */
+@media (max-width: 768px) {
+    .grid-container {
+        max-height: 500px;
+    }
+
+    /* Su mobile, assicurati che l'header rimanga visibile */
+    #spreadsheet-table thead {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+}

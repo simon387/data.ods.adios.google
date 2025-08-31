@@ -1,6 +1,7 @@
 Version 1.2.1
 - avoiding duplicated calculations
 - better export file names
+- added header lock
 
 Version 1.2.0
 - fix automatic average calculation bug

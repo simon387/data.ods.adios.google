@@ -209,16 +209,31 @@ function displaySheet(sheetName) {
 	if (!data[sheetName]) data[sheetName] = [[]];
 
 	const sheetData = data[sheetName];
-	const maxCols = Math.max(8, ...sheetData.map(row => row.length || 0)); // 26
+	const maxCols = Math.max(8, ...sheetData.map(row => row.length || 0));
 	const maxRows = Math.max(64, sheetData.length);
 
-	let html = '<thead><tr><th></th>';
+	// Crea header a due righe: lettere delle colonne + intestazioni dei dati
+	let html = '<thead>';
+
+	// Prima riga dell'header: lettere delle colonne (A, B, C, ...)
+	html += '<tr><th></th>';
 	for (let col = 0; col < maxCols; col++) {
 		html += `<th>${colName(col)}</th>`;
 	}
-	html += '</tr></thead><tbody>';
+	html += '</tr>';
 
-	for (let row = 0; row < maxRows; row++) {
+	// Seconda riga dell'header: intestazioni dei dati (usando th invece di td)
+	html += '<tr><th class="row-header">1</th>';
+	for (let col = 0; col < maxCols; col++) {
+		const cellValue = (sheetData[0] && sheetData[0][col]) ? sheetData[0][col] : '';
+		html += `<th class="header-data-cell" data-row="0" data-col="${col}">${escapeHtml(cellValue)}</th>`;
+	}
+	html += '</tr>';
+
+	html += '</thead><tbody>';
+
+	// Righe dati (a partire dalla riga 1, dato che la riga 0 è ora nell'header)
+	for (let row = 1; row < maxRows; row++) {
 		html += `<tr><th class="row-header">${row + 1}</th>`;
 		for (let col = 0; col < maxCols; col++) {
 			const cellValue = (sheetData[row] && sheetData[row][col]) ? sheetData[row][col] : '';
@@ -232,7 +247,7 @@ function displaySheet(sheetName) {
 	table.style.display = 'table';
 	loading.style.display = 'none';
 
-	// Attacca listener alle celle (desktop + mobile)
+	// Attacca listener alle celle (desktop + mobile) - incluse quelle nell'header
 	attachCellListeners(table);
 }
 
@@ -243,7 +258,8 @@ function escapeHtml(s) {
 }
 
 function attachCellListeners(table) {
-	const cells = table.querySelectorAll('td.cell');
+	// Seleziona sia le celle normali che quelle nell'header
+	const cells = table.querySelectorAll('td.cell, th.header-data-cell');
 
 	cells.forEach((cell) => {
 		// Desktop: click selezione, doppio click edit

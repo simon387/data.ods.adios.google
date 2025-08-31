@@ -33,5 +33,6 @@ class Config
 + ~~meno colonne, più righe, specie mobile~~
 + ~~modale dopo che inserisci importo~~
 + ~~template data~~
-+ calcoli
++ ~~calcoli~~
++ formattazione importi, fissi 2 decimali e simbolo dell'euro?
 + autoscroll
