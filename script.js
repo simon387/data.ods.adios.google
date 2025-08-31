@@ -281,6 +281,11 @@ function isCellEditable(row, col, sheetName) {
 		return false;
 	}
 
+	if (col === 0) {
+		return false; // Colonna A (date) non modificabile in modalità normale
+	}
+
+	// Controlla se è la prima riga vuota}
 	const firstEmptyRow = findFirstEmptyRow(sheetName, STARTING_EDITABLE_ROW);
 
 	// Se è la prima riga vuota, tutte le colonne sono modificabili
@@ -881,6 +886,7 @@ window.onload = async function () {
 
 	updateButtonStates();
 	initializeDescriptionModal();
+	initializeDeleteRowButton();
 
 	// Ricalcola tutte le medie dopo aver caricato i dati
 	setTimeout(() => {

@@ -1,5 +1,7 @@
 Version 1.1.1
 - fix automatic average calculation bug
+- fix bug initializeDeleteRowButton
+- blocked first column for editing
 
 Version 1.1.0
 - added unlock rule button
