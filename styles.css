@@ -9,6 +9,7 @@ body {
     background: #f5f5f5;
 }
 
+/* ========== HEADER ========== */
 .header {
     background: #2c5aa0;
     color: white;
@@ -27,6 +28,7 @@ body {
     flex-wrap: wrap;
 }
 
+/* ========== BUTTONS ========== */
 button {
     background: #4a69bd;
     color: white;
@@ -63,10 +65,29 @@ button.secondary:hover {
     background: #5a6268;
 }
 
+button.primary {
+    background: #28a745;
+}
+
+button.primary:hover {
+    background: #218838;
+}
+
+button.disabled-bypass {
+    background: #999 !important;
+    opacity: 0.6;
+    cursor: not-allowed !important;
+}
+
+button.disabled-bypass:hover {
+    background: #999 !important;
+}
+
 .file-input {
     display: none;
 }
 
+/* ========== LAYOUT ========== */
 .container {
     padding: 20px;
     max-width: 100%;
@@ -80,6 +101,13 @@ button.secondary:hover {
     overflow: hidden;
 }
 
+.loading {
+    text-align: center;
+    padding: 40px;
+    color: #666;
+}
+
+/* ========== SHEET TABS ========== */
 .sheet-tabs {
     background: #f8f9fa;
     padding: 10px;
@@ -118,9 +146,11 @@ button.secondary:hover {
     background: white;
 }
 
+/* ========== GRID & TABLE ========== */
 .grid-container {
     overflow: auto;
     max-height: 600px;
+    position: relative;
 }
 
 table {
@@ -148,6 +178,57 @@ th {
     min-width: 50px;
 }
 
+/* ========== STICKY HEADER ========== */
+#spreadsheet-table thead {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background-color: #f8f9fa;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+#spreadsheet-table thead th {
+    background-color: #f8f9fa;
+    position: sticky;
+    top: 0;
+}
+
+#spreadsheet-table thead th:first-child {
+    background-color: #e9ecef;
+}
+
+#spreadsheet-table thead .row-header {
+    background-color: #f8f9fa;
+    font-weight: bold;
+    text-align: center;
+    min-width: 50px;
+}
+
+/* Celle di intestazione dati (seconda riga dell'header) */
+#spreadsheet-table thead .header-data-cell {
+    background-color: #e9ecef !important;
+    font-weight: bold;
+    text-transform: uppercase;
+    font-size: 14px;
+    letter-spacing: 0.5px;
+    color: #495057 !important;
+    text-align: center;
+    border-bottom: 2px solid #adb5bd;
+    cursor: cell;
+    transition: background 0.2s;
+}
+
+#spreadsheet-table thead .header-data-cell:hover {
+    background-color: #dee2e6 !important;
+}
+
+#spreadsheet-table thead .header-data-cell.selected {
+    background-color: #d1ecf1 !important;
+    outline: 2px solid #17a2b8 !important;
+    color: #0c5460 !important;
+}
+
+/* ========== CELLS ========== */
 .cell {
     min-height: 20px;
     cursor: cell;
@@ -171,6 +252,84 @@ th {
     font-family: inherit;
 }
 
+/* Celle di errore */
+.cell.error {
+    background-color: #ffebee !important;
+    border: 2px solid #f44336 !important;
+    animation: shake 0.5s ease-in-out;
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+}
+
+/* ========== COLUMN-SPECIFIC STYLES ========== */
+/* Colonna B (importi) - solo celle dati */
+.cell[data-col="1"] {
+    text-align: right !important;
+    font-family: 'Courier New', monospace;
+    font-weight: 500;
+    padding-right: 4px;
+}
+
+.cell[data-col="1"] input,
+.cell[data-col="1"][contenteditable] {
+    text-align: right !important;
+    font-family: 'Courier New', monospace;
+}
+
+/* Intestazione colonna B - mantiene stile header */
+.header-data-cell[data-col="1"] {
+    font-weight: bold !important;
+    text-transform: uppercase !important;
+}
+
+.header-data-cell[data-col="1"] input,
+.header-data-cell[data-col="1"][contenteditable] {
+    text-align: center !important;
+    font-weight: bold !important;
+    text-transform: uppercase !important;
+    font-family: Arial, sans-serif !important;
+}
+
+/* ========== CALCULATED CELLS ========== */
+.calculated-cell {
+    color: #495057;
+    font-style: italic;
+    text-align: right !important;
+    font-weight: 500;
+    font-family: 'Courier New', monospace;
+    padding-right: 4px;
+}
+
+.calculated-cell:hover {
+    background-color: #e9ecef !important;
+}
+
+.calculated-cell.selected {
+    background-color: #d1ecf1 !important;
+    color: #0c5460;
+}
+
+/* Colori specifici per tipo di calcolo */
+.calculated-average {
+    background-color: #d4edda !important;
+    border-left: 3px solid #28a745 !important;
+}
+
+.calculated-estimated {
+    background-color: #fff3cd !important;
+    border-left: 3px solid #ffc107 !important;
+}
+
+.calculated-total {
+    background-color: #d1ecf1 !important;
+    border-left: 3px solid #17a2b8 !important;
+}
+
+/* ========== STATUS & MODALS ========== */
 .status {
     position: fixed;
     bottom: 20px;
@@ -195,13 +354,6 @@ th {
     background: #dc3545;
 }
 
-.loading {
-    text-align: center;
-    padding: 40px;
-    color: #666;
-}
-
-/* Modal styles */
 .modal {
     display: none;
     position: fixed;
@@ -215,12 +367,8 @@ th {
 }
 
 @keyframes fadeIn {
-    from {
-        opacity: 0;
-    }
-    to {
-        opacity: 1;
-    }
+    from { opacity: 0; }
+    to { opacity: 1; }
 }
 
 .modal-content {
@@ -262,94 +410,7 @@ th {
     line-height: 1.5;
 }
 
-/* Responsive design */
-@media (max-width: 768px) {
-    .header {
-        flex-direction: column;
-        align-items: stretch;
-    }
-
-    .controls {
-        justify-content: center;
-    }
-
-    .container {
-        padding: 10px;
-    }
-
-    .grid-container {
-        max-height: 400px;
-    }
-
-    th, td {
-        min-width: 80px;
-        padding: 2px 4px;
-    }
-}
-
-/* Aggiornamento grid-container: scroll orizzontale */
-.grid-container {
-    overflow-x: auto; /* scroll orizzontale */
-    max-height: 600px; /* puoi regolare l'altezza per vedere più righe */
-}
-
-/* Media query aggiornata per mobile */
-@media (max-width: 768px) {
-    .header {
-        flex-direction: column;
-        align-items: stretch;
-    }
-
-    .controls {
-        justify-content: center;
-    }
-
-    .container {
-        padding: 10px;
-    }
-
-    .grid-container {
-        max-height: 500px; /* più righe visibili su mobile */
-        overflow-x: auto; /* scroll orizzontale */
-    }
-
-    th, td {
-        min-width: 80px;
-        padding: 2px 4px;
-    }
-
-    /* Nascondi colonne oltre la 3a su mobile */
-    td:nth-child(n+4),
-    th:nth-child(n+4) {
-        display: none;
-    }
-}
-
-/* Stili per celle con errore di validazione */
-.cell.error {
-    background-color: #ffebee !important;
-    border: 2px solid #f44336 !important;
-    animation: shake 0.5s ease-in-out;
-}
-
-@keyframes shake {
-    0%, 100% { transform: translateX(0); }
-    25% { transform: translateX(-5px); }
-    75% { transform: translateX(5px); }
-}
-
-/* Stile per pulsante elimina riga quando disabilitato per modalità bypass */
-button.disabled-bypass {
-    background: #999 !important;
-    opacity: 0.6;
-    cursor: not-allowed !important;
-}
-
-button.disabled-bypass:hover {
-    background: #999 !important;
-}
-
-/* Stili per la modal descrizione */
+/* Modal descrizione */
 .description-input-container {
     margin: 15px 0;
 }
@@ -376,18 +437,42 @@ button.disabled-bypass:hover {
     font-style: italic;
 }
 
-/* Stile per pulsante primario */
-button.primary {
-    background: #28a745;
-    color: white;
-}
-
-button.primary:hover {
-    background: #218838;
-}
-
-/* Responsive per la modal descrizione */
+/* ========== RESPONSIVE ========== */
 @media (max-width: 768px) {
+    .header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .controls {
+        justify-content: center;
+    }
+
+    .container {
+        padding: 10px;
+    }
+
+    .grid-container {
+        max-height: 500px;
+    }
+
+    #spreadsheet-table thead {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+
+    th, td {
+        min-width: 80px;
+        padding: 2px 4px;
+    }
+
+    /* Nascondi colonne oltre la 3a su mobile */
+    td:nth-child(n+4),
+    th:nth-child(n+4) {
+        display: none;
+    }
+
     .modal-content {
         margin: 10% auto;
         width: 95%;
@@ -397,228 +482,4 @@ button.primary:hover {
         font-size: 16px; /* Previene zoom su iOS */
         padding: 10px;
     }
-}
-
-/* CSS personalizzato per le celle di intestazione (prima riga) */
-.cell[data-row="0"] {
-    font-weight: bold;
-    text-transform: uppercase;
-    background-color: #e9ecef !important;
-    font-size: 14px;
-    letter-spacing: 0.5px;
-    color: #495057;
-    text-align: center;
-    border-bottom: 2px solid #adb5bd;
-}
-
-/* Effetto hover per le celle di intestazione */
-.cell[data-row="0"]:hover {
-    background-color: #dee2e6 !important;
-}
-
-/* Quando una cella di intestazione è selezionata */
-.cell[data-row="0"].selected {
-    background-color: #d1ecf1 !important;
-    outline: 2px solid #17a2b8 !important;
-    color: #0c5460;
-}
-
-/* Per gli input nelle celle di intestazione (quando in modalità edit) */
-.cell[data-row="0"] input,
-.cell[data-row="0"][contenteditable] {
-    font-weight: bold;
-    text-transform: uppercase;
-    text-align: center;
-    letter-spacing: 0.5px;
-    color: #495057;
-    background-color: white;
-}
-
-/* Assicurati che il testo rimanga maiuscolo anche durante l'editing */
-.cell[data-row="0"][contenteditable="true"],
-.cell[data-row="0"][contenteditable="plaintext-only"] {
-    font-weight: bold;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-/* CSS per celle con valori calcolati (medie mensili) */
-.calculated-cell {
-    background-color: #f8f9fa !important;
-    color: #6c757d;
-    font-style: italic;
-    text-align: right;
-    font-weight: 500;
-    border-left: 3px solid #28a745 !important;
-}
-
-.calculated-cell:hover {
-    background-color: #e9ecef !important;
-}
-
-.calculated-cell.selected {
-    background-color: #d1ecf1 !important;
-    color: #0c5460;
-}
-
-/* CSS per celle con valori calcolati (base) */
-.calculated-cell {
-    color: #495057;
-    font-style: italic;
-    text-align: right;
-    font-weight: 500;
-}
-
-.calculated-cell:hover {
-    background-color: #e9ecef !important;
-}
-
-.calculated-cell.selected {
-    background-color: #d1ecf1 !important;
-    color: #0c5460;
-}
-
-/* CSS specifico per media mensile (colonna D) */
-.calculated-average {
-    background-color: #d4edda !important;
-    border-left: 3px solid #28a745 !important;
-}
-
-/* CSS specifico per stima totale (colonna E) */
-.calculated-estimated {
-    background-color: #fff3cd !important;
-    border-left: 3px solid #ffc107 !important;
-}
-
-/* CSS specifico per totale effettivo (colonna F) */
-.calculated-total {
-    background-color: #d1ecf1 !important;
-    border-left: 3px solid #17a2b8 !important;
-}
-
-/* CSS per rendere l'intestazione fissa durante lo scroll */
-.grid-container {
-    overflow: auto;
-    max-height: 600px;
-    position: relative; /* Necessario per il posizionamento sticky */
-}
-
-/* Rende sticky tutto l'header della tabella */
-#spreadsheet-table thead {
-    position: sticky;
-    top: 0;
-    z-index: 10;
-    background-color: #f8f9fa;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-/* Assicura che TUTTE le celle dell'header abbiano sfondo opaco */
-#spreadsheet-table thead th {
-    background-color: #f8f9fa;
-    position: sticky;
-    top: 0;
-}
-
-/* Stile specifico per le celle di dati nella seconda riga dell'header */
-#spreadsheet-table thead .header-data-cell {
-    background-color: #e9ecef !important;
-    font-weight: bold;
-    text-transform: uppercase;
-    font-size: 14px;
-    letter-spacing: 0.5px;
-    color: #495057 !important;
-    text-align: center;
-    border-bottom: 2px solid #adb5bd;
-    cursor: cell;
-    transition: background 0.2s;
-}
-
-#spreadsheet-table thead .header-data-cell:hover {
-    background-color: #dee2e6 !important;
-}
-
-#spreadsheet-table thead .header-data-cell.selected {
-    background-color: #d1ecf1 !important;
-    outline: 2px solid #17a2b8 !important;
-    color: #0c5460 !important;
-}
-
-/* Stile migliorato per le intestazioni delle colonne quando sono sticky */
-#spreadsheet-table thead th:first-child {
-    /* Prima colonna (vuota) dell'header */
-    background-color: #e9ecef;
-}
-
-/* Stile per i row header nella seconda riga dell'header */
-#spreadsheet-table thead .row-header {
-    background-color: #f8f9fa;
-    font-weight: bold;
-    text-align: center;
-    min-width: 50px;
-}
-
-/* Media query per mobile - riduce l'altezza per vedere più contenuto */
-@media (max-width: 768px) {
-    .grid-container {
-        max-height: 500px;
-    }
-
-    /* Su mobile, assicurati che l'header rimanga visibile */
-    #spreadsheet-table thead {
-        position: sticky;
-        top: 0;
-        z-index: 10;
-    }
-}
-
-/* La cella di intestazione "IMPORTO" mantiene il suo stile originale */
-.header-data-cell[data-col="1"] {
-    /* Non applica text-align: right, mantiene text-align: center dall'header */
-    /* Mantiene il font originale dell'header, non monospace */
-    font-weight: bold !important;
-    text-transform: uppercase !important;
-}
-
-/* Allineamento per le colonne calcolati (D, E, F) - già allineati a destra dal CSS precedente */
-.calculated-cell {
-    text-align: right !important;
-    font-family: 'Courier New', monospace; /* Font monospace per migliore allineamento numeri */
-}
-
-/* Quando l'utente sta editando la colonna importi, mantieni l'allineamento */
-/* Allineamento per la colonna B (importi) - allinea a destra - SOLO per le righe dati */
-.cell[data-col="1"] {
-    text-align: right !important;
-    font-family: 'Courier New', monospace; /* Font monospace per migliore allineamento numeri */
-    font-weight: 500;
-}
-
-/* Stile migliorato per tutti gli importi */
-.cell[data-col="1"]:not(:empty)::after,
-.calculated-cell:not(:empty) {
-    /* Piccolo spazio dopo i numeri per respirare meglio */
-    padding-right: 2px;
-}
-
-/* Quando l'utente sta editando la colonna importi, mantieni l'allineamento - SOLO per celle dati */
-.cell[data-col="1"] input,
-.cell[data-col="1"][contenteditable] {
-    text-align: right !important;
-    font-family: 'Courier New', monospace;
-}
-
-/* Per l'editing delle intestazioni, mantieni il comportamento normale */
-.header-data-cell[data-col="1"] input,
-.header-data-cell[data-col="1"][contenteditable] {
-    text-align: center !important;
-    font-weight: bold !important;
-    text-transform: uppercase !important;
-    font-family: Arial, sans-serif !important;
-}
-
-/* Stile migliorato per tutti gli importi nelle celle dati */
-.cell[data-col="1"]:not(:empty),
-.calculated-cell:not(:empty) {
-    /* Piccolo spazio dopo i numeri per respirare meglio */
-    padding-right: 4px;
 }

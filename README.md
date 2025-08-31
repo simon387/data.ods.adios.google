@@ -35,4 +35,4 @@ class Config
 + ~~template data~~
 + ~~calcoli~~
 + ~~formattazione importi, fissi 2 decimali e simbolo dell'euro?~~
-+ autoscroll
++ ~~autoscroll~~

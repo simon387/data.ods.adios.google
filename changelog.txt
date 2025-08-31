@@ -2,6 +2,7 @@ Version 1.2.3
 - added euro format
 - added startup autoscroll
 - fixed css column B header
+- better css rules
 
 Version 1.2.2
 - showing less useless columns
