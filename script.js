@@ -568,7 +568,7 @@ function applyEdit(sheetName, row, col, newValue, cell) {
 	}
 
 	// Aggiorna UI (solo se non abbiamo già un input dentro)
-	if (!cell.querySelector('input')) {
+	//if (!cell.querySelector('input')) { aggiorniamo sempre perchè è buggato
 		cell.innerHTML = escapeHtml(newValue);
 
 		// Se abbiamo appena formattato un importo, assicuriamoci che la UI si aggiorni
@@ -578,7 +578,7 @@ function applyEdit(sheetName, row, col, newValue, cell) {
 				cell.innerHTML = escapeHtml(newValue);
 			}, 50);
 		}
-	}
+	//}
 
 	// Auto-save debounce (solo se non stiamo per mostrare la modal descrizione)
 	if (bypassMode || col !== 1 || row === 0 || newValue.trim() === '') {
