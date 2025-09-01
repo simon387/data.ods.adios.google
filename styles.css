@@ -467,9 +467,9 @@ th {
         padding: 2px 4px;
     }
 
-    /* Nascondi colonne oltre la 3a su mobile */
-    td:nth-child(n+4),
-    th:nth-child(n+4) {
+    /* Nascondi colonne oltre la 5a su mobile */
+    td:nth-child(n+6),
+    th:nth-child(n+6) {
         display: none;
     }
 
@@ -488,9 +488,21 @@ th {
     display: none !important;
 }
 
-/* CSS */
 #spreadsheet-table td.cell, #spreadsheet-table th.header-data-cell {
     min-height: 32px; /* o l'altezza che preferisci */
     height: 32px;
     vertical-align: middle;
+}
+
+@media (max-width: 768px) {
+    th, td {
+        min-width: 50px;
+        padding: 1px 2px;
+    }
+}
+
+@media (max-width: 768px) {
+    .header-title {
+        font-size: 1.2rem;
+    }
 }

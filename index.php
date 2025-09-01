@@ -36,7 +36,7 @@ $currentVersion = getCurrentVersion();
 </head>
 <body>
 <div class="header">
-	<h1>Money v<?php echo htmlspecialchars($currentVersion); ?></h1>
+	<h1 class="header-title">Money v<?php echo htmlspecialchars($currentVersion); ?></h1>
 	<div class="controls">
 		<button class="displaynone" id="load-xls-btn" onclick="document.getElementById('file-upload').click()">
 			📁 Carica Excel
@@ -74,7 +74,7 @@ $currentVersion = getCurrentVersion();
 <div id="confirm-modal" class="modal">
 	<div class="modal-content">
 		<h3 id="modal-title">Conferma azione</h3>
-		<p id="modal-message">Sei sicuro di voler procedere?</p>
+		<p id="modal-message">Sicuro di voler procedere?</p>
 		<div class="modal-actions">
 			<button onclick="closeModal()" class="secondary">Annulla</button>
 			<button onclick="confirmAction()" id="confirm-btn" class="danger">Conferma</button>
@@ -86,12 +86,12 @@ $currentVersion = getCurrentVersion();
 <div id="description-modal" class="modal">
 	<div class="modal-content">
 		<h3 id="description-modal-title">💰 Aggiungi Descrizione</h3>
-		<p>Hai inserito un nuovo importo. Vuoi aggiungere una descrizione?</p>
+		<p>Nuovo importo inserito, vuoi aggiungere una descrizione?</p>
 		<div class="description-input-container">
 			<label for="description-input"></label><input
 					type="text"
 					id="description-input"
-					placeholder="Es: Spesa supermercato, Stipendio, Bolletta luce..."
+					placeholder="Es: Sandra, Mercadona..."
 					maxlength="100"
 			>
 		</div>
