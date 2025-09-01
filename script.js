@@ -744,7 +744,7 @@ async function saveData() {
 	} finally {
 		const saveBtn = document.getElementById('save-btn');
 		if (saveBtn) {
-			saveBtn.textContent = '💾 Salva';
+			saveBtn.textContent = '💾';
 			saveBtn.disabled = false;
 		}
 	}

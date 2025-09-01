@@ -1,3 +1,6 @@
+Version 1.2.15
+- fix label bug from js
+
 Version 1.2.14
 - update readme
 
