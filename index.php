@@ -88,12 +88,13 @@ $currentVersion = getCurrentVersion();
 		<h3 id="description-modal-title">💰 Aggiungi Descrizione</h3>
 		<p>Nuovo importo inserito, vuoi aggiungere una descrizione?</p>
 		<div class="description-input-container">
-			<label for="description-input"></label><input
-					type="text"
-					id="description-input"
-					placeholder="Es: Sandra, Mercadona..."
-					maxlength="100"
-			>
+			<label for="description-input"></label>
+			<input id="description-input" list="autocomplete-list" autocomplete="off" />
+			<datalist id="autocomplete-list">
+				<option value="Sandra">
+				<option value="Mercadona">
+				<option value="Gasolina">
+			</datalist>
 		</div>
 		<div class="modal-actions">
 			<button id="description-cancel-btn" class="secondary">Salta</button>
