@@ -536,7 +536,7 @@ function applyEdit(sheetName, row, col, newValue, cell) {
 		const formattedDate = today.toLocaleDateString('it-IT', {
 			day: '2-digit',
 			month: '2-digit',
-			year: 'numeric'
+			year: '2-digit' // prima era numeric
 		});
 
 		data[sheetName][row][0] = formattedDate;

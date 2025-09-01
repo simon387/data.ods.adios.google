@@ -1,3 +1,6 @@
+Version 1.2.16
+- date compression, from 4 to 2 digits
+
 Version 1.2.15
 - fix label bug from js
 
