@@ -1,3 +1,6 @@
+Version 1.2.17
+- fix calculation bug
+
 Version 1.2.16
 - date compression, from 4 to 2 digits
 

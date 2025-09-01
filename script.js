@@ -1264,31 +1264,69 @@ function calculateMonthlyAverage(sheetName, targetMonthYear) {
 	if (!data[sheetName]) return 0;
 
 	const sheetData = data[sheetName];
-	let totalAmount = 0;
-	let count = 0;
 
-	// Scorre tutte le righe (escludendo la prima riga di intestazioni)
+	// Somme per giorno (key = "YYYY-MM-DD")
+	const perDay = new Map();
+
 	for (let row = 1; row < sheetData.length; row++) {
 		const rowData = sheetData[row] || [];
 		const dateCell = rowData[0]; // Colonna A (data)
 		const amountCell = rowData[1]; // Colonna B (importo)
 
-		// Controlla se abbiamo sia data che importo
 		if (!dateCell || !amountCell) continue;
 
-		// Estrae mese/anno dalla data
+		// Verifica che la riga sia del mese/anno target
 		const dateInfo = getMonthYearFromDate(dateCell);
 		if (!dateInfo || dateInfo.monthYear !== targetMonthYear) continue;
 
-		// Usa parseEuroAmount per gestire correttamente i separatori delle migliaia
+		// Parse importo (es. "1.234,56" -> 1234.56)
 		const amount = parseEuroAmount(amountCell);
-		if (!isNaN(amount)) {
-			totalAmount += amount;
-			count++;
-		}
+		if (isNaN(amount)) continue;
+
+		// Normalizza la data in chiave "YYYY-MM-DD" (locale)
+		const key = toLocalDateKey(dateCell);
+		if (!key) continue;
+
+		perDay.set(key, (perDay.get(key) || 0) + amount);
 	}
 
-	return count > 0 ? totalAmount / count : 0;
+	if (perDay.size === 0) return 0;
+
+	// Media delle somme giornaliere (solo giorni con dati)
+	let totalOfDailyTotals = 0;
+	for (const v of perDay.values()) totalOfDailyTotals += v;
+
+	return totalOfDailyTotals / perDay.size;
+
+	// --- helper ---
+	function toLocalDateKey(dateLike) {
+		// Se è un Date, usa direttamente
+		if (dateLike instanceof Date && !isNaN(dateLike)) {
+			const y = dateLike.getFullYear();
+			const m = String(dateLike.getMonth() + 1).padStart(2, "0");
+			const d = String(dateLike.getDate()).padStart(2, "0");
+			return `${y}-${m}-${d}`;
+		}
+
+		// Se è stringa "dd/mm/yyyy"
+		if (typeof dateLike === "string" && dateLike.includes("/")) {
+			const [dd, mm, yy] = dateLike.split("/").map(s => parseInt(s, 10));
+			if (!dd || !mm || !yy) return null;
+			const y = yy < 100 ? (2000 + yy) : yy;
+			return `${String(y).padStart(4,"0")}-${String(mm).padStart(2,"0")}-${String(dd).padStart(2,"0")}`;
+		}
+
+		// Fallback: tenta il parsing standard
+		const d = new Date(dateLike);
+		if (isNaN(d)) return null;
+		const y = d.getFullYear();
+		const m = String(d.getMonth() + 1).padStart(2, "0");
+		const day = String(d.getDate()).padStart(2, "0");
+		//return `${y}-${m}-${day}`;
+		const [mm, yyyy] = targetMonthYear.split("/").map(n => parseInt(n,10)); // es. "08/2025"
+		const daysInMonth = new Date(yyyy, mm, 0).getDate();
+		return totalOfDailyTotals / daysInMonth;
+	}
 }
 
 // Funzione per aggiornare le medie mensili secondo le due regole
