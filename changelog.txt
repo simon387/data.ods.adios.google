@@ -1,3 +1,6 @@
+Version 1.2.14
+- update readme
+
 Version 1.2.13
 - added semi-auto complete
 
