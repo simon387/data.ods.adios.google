@@ -1,7 +1,3 @@
-/* =========================
-   script.js - versione pulita
-   ========================= */
-
 /* ---------- Cattura errori visibile (utile su mobile senza console) ---------- */
 window.addEventListener('error', function (e) {
 	try {
@@ -118,7 +114,9 @@ function colName(n) {
 
 function showStatus(message, type) {
 	const status = document.getElementById('status');
-	if (!status) return;
+	if (!status) {
+		return;
+	}
 	status.textContent = message;
 	status.className = `status ${type} show`;
 	setTimeout(() => status.classList.remove('show'), 3000);
@@ -145,7 +143,9 @@ function findFirstEmptyRow(sheetName, startFromRow) {
 /* --------------------- Caricamento file Excel --------------------- */
 function loadFile(event) {
 	const file = event.target.files[0];
-	if (!file) return;
+	if (!file) {
+		return;
+	}
 
 	const reader = new FileReader();
 	reader.onload = function (e) {
@@ -191,7 +191,9 @@ function loadFile(event) {
 function extractCellValues(worksheet) {
 	const result = [];
 	const range = worksheet['!ref'];
-	if (!range) return result;
+	if (!range) {
+		return result;
+	}
 
 	const decoded = XLSX.utils.decode_range(range);
 	for (let r = decoded.s.r; r <= decoded.e.r; r++) {
@@ -200,7 +202,9 @@ function extractCellValues(worksheet) {
 			const cellAddress = XLSX.utils.encode_cell({r, c});
 			const cell = worksheet[cellAddress];
 			let cellValue = '';
-			if (cell) cellValue = cell.w || cell.v || '';
+			if (cell) {
+				cellValue = cell.w || cell.v || '';
+			}
 			rowData[c - decoded.s.c] = (cellValue === undefined || cellValue === null) ? '' : String(cellValue);
 		}
 		result[r - decoded.s.r] = rowData;
@@ -221,9 +225,13 @@ function switchSheet(index, sheetName) {
 function displaySheet(sheetName) {
 	const table = document.getElementById('spreadsheet-table');
 	const loading = document.getElementById('loading');
-	if (!table || !loading) return;
+	if (!table || !loading) {
+		return;
+	}
 
-	if (!data[sheetName]) data[sheetName] = [[]];
+	if (!data[sheetName]) {
+		data[sheetName] = [[]];
+	}
 
 	const sheetData = data[sheetName];
 	const maxCols = Math.max(6, ...sheetData.map(row => row.length || 0)); // MOSTRA SOLO 6 COLONNE, QUINDI FINO ALLA LETTERA F
@@ -296,7 +304,9 @@ function attachCellListeners(table) {
 
 // Modifica la funzione selectCell per aggiornare lo stato del pulsante
 function selectCell(cell) {
-	if (selectedCell) selectedCell.classList.remove('selected');
+	if (selectedCell) {
+		selectedCell.classList.remove('selected');
+	}
 	selectedCell = cell;
 	cell.classList.add('selected');
 
@@ -400,7 +410,8 @@ function editCell(cell) {
 				const sel = window.getSelection();
 				sel.removeAllRanges();
 				sel.addRange(range);
-			} catch (_) {}
+			} catch (_) {
+			}
 		});
 
 		const onBlur = () => {
@@ -470,7 +481,8 @@ function editCell(cell) {
 				input.focus({preventScroll: true});
 				try {
 					input.setSelectionRange(0, input.value.length);
-				} catch (_) {}
+				} catch (_) {
+				}
 			});
 		});
 	}
@@ -478,7 +490,9 @@ function editCell(cell) {
 
 // Funzione helper per validare se un valore è un importo valido
 function isValidAmount(value) {
-	if (!value || value.trim() === '') return true; // Celle vuote sono valide
+	if (!value || value.trim() === '') { // Celle vuote sono valide
+		return true;
+	}
 
 	// Se contiene già il simbolo euro, prova a convertirlo
 	if (value.includes('€')) {
@@ -525,7 +539,9 @@ function applyEdit(sheetName, row, col, newValue, cell) {
 	const isAmountChange = (col === 1 && row > 0); // Cambio nella colonna importi
 	const isDateChange = (col === 0 && row > 0); // Cambio nella colonna date
 
-	if (!data[sheetName][row]) data[sheetName][row] = [];
+	if (!data[sheetName][row]) {
+		data[sheetName][row] = [];
+	}
 	data[sheetName][row][col] = newValue;
 
 	// Regola speciale: se sto inserendo nella colonna B (index 1) e non è la prima riga
@@ -569,15 +585,15 @@ function applyEdit(sheetName, row, col, newValue, cell) {
 
 	// Aggiorna UI (solo se non abbiamo già un input dentro)
 	//if (!cell.querySelector('input')) { aggiorniamo sempre perchè è buggato
-		cell.innerHTML = escapeHtml(newValue);
+	cell.innerHTML = escapeHtml(newValue);
 
-		// Se abbiamo appena formattato un importo, assicuriamoci che la UI si aggiorni
-		if (!bypassMode && col === 1 && row > 0 && newValue.includes('€')) {
-			// Forza un refresh della cella per mostrare la formattazione
-			setTimeout(() => {
-				cell.innerHTML = escapeHtml(newValue);
-			}, 50);
-		}
+	// Se abbiamo appena formattato un importo, assicuriamoci che la UI si aggiorni
+	if (!bypassMode && col === 1 && row > 0 && newValue.includes('€')) {
+		// Forza un refresh della cella per mostrare la formattazione
+		setTimeout(() => {
+			cell.innerHTML = escapeHtml(newValue);
+		}, 50);
+	}
 	//}
 
 	// Auto-save debounce (solo se non stiamo per mostrare la modal descrizione)
@@ -589,7 +605,9 @@ function applyEdit(sheetName, row, col, newValue, cell) {
 
 // Funzione da chiamare quando carichi i dati esistenti per ricalcolare tutte le medie
 function recalculateAllAverages() {
-	if (!workbook) return;
+	if (!workbook) {
+		return;
+	}
 
 	workbook.SheetNames.forEach(sheetName => {
 		updateAllMonthlyAverages(sheetName);
@@ -647,7 +665,9 @@ function executeDeleteSheet() {
 	delete workbook.Sheets[sheetName];
 	delete data[sheetName];
 
-	if (currentSheet >= workbook.SheetNames.length) currentSheet = workbook.SheetNames.length - 1;
+	if (currentSheet >= workbook.SheetNames.length) {
+		currentSheet = workbook.SheetNames.length - 1;
+	}
 
 	// Ricostruisci tabs e vista
 	const tabsContainer = document.getElementById('sheet-tabs');
@@ -733,7 +753,9 @@ async function saveData() {
 
 		const result = await response.json();
 		if (result.success) {
-			if (!documentId) documentId = result.documentId;
+			if (!documentId) {
+				documentId = result.documentId;
+			}
 			showStatus('Dati salvati con successo!', 'success');
 			updateButtonStates();
 		} else {
@@ -771,7 +793,9 @@ function exportExcel() {
 	const s2ab = (s) => {
 		const buf = new ArrayBuffer(s.length);
 		const view = new Uint8Array(buf);
-		for (let i = 0; i < s.length; i++) view[i] = s.charCodeAt(i) & 0xFF;
+		for (let i = 0; i < s.length; i++) {
+			view[i] = s.charCodeAt(i) & 0xFF;
+		}
 		return buf;
 	};
 
@@ -815,7 +839,9 @@ function updateButtonStates() {
 	const deleteSheetBtn = document.getElementById('delete-sheet-btn');
 	const deleteDocBtn = document.getElementById('delete-doc-btn');
 
-	if (!deleteSheetBtn || !deleteDocBtn) return;
+	if (!deleteSheetBtn || !deleteDocBtn) {
+		return;
+	}
 
 	if (workbook && workbook.SheetNames.length > 1) {
 		deleteSheetBtn.disabled = false;
@@ -837,36 +863,54 @@ function updateButtonStates() {
 /* --------------------- Eventi globali pagina --------------------- */
 window.onclick = function (event) {
 	const modal = document.getElementById('confirm-modal');
-	if (event.target === modal) closeModal();
+	if (event.target === modal) {
+		closeModal();
+	}
 };
 
 document.addEventListener('keydown', function (event) {
-	if (event.key === 'Escape') closeModal();
+	if (event.key === 'Escape') {
+		closeModal();
+	}
 }, {passive: true});
 
 /* --------------------- Bootstrap all’avvio --------------------- */
 window.onload = async function () {
 	// Collega i pulsanti (se non già con onclick inline)
 	const fileInput = document.getElementById('file-upload');
-	if (fileInput) fileInput.addEventListener('change', loadFile);
+	if (fileInput) {
+		fileInput.addEventListener('change', loadFile);
+	}
 
 	const saveBtn = document.getElementById('save-btn');
-	if (saveBtn) saveBtn.addEventListener('click', saveData);
+	if (saveBtn) {
+		saveBtn.addEventListener('click', saveData);
+	}
 
 	const exportBtn = Array.from(document.querySelectorAll('button')).find(b => b.textContent && b.textContent.includes('Esporta'));
-	if (exportBtn) exportBtn.addEventListener('click', exportExcel);
+	if (exportBtn) {
+		exportBtn.addEventListener('click', exportExcel);
+	}
 
 	const newSheetBtn = Array.from(document.querySelectorAll('button')).find(b => b.textContent && b.textContent.includes('Nuovo Foglio'));
-	if (newSheetBtn) newSheetBtn.addEventListener('click', createNewSheet);
+	if (newSheetBtn) {
+		newSheetBtn.addEventListener('click', createNewSheet);
+	}
 
 	const delSheetBtn = document.getElementById('delete-sheet-btn');
-	if (delSheetBtn) delSheetBtn.addEventListener('click', deleteCurrentSheet);
+	if (delSheetBtn) {
+		delSheetBtn.addEventListener('click', deleteCurrentSheet);
+	}
 
 	const delDocBtn = document.getElementById('delete-doc-btn');
-	if (delDocBtn) delDocBtn.addEventListener('click', deleteDocument);
+	if (delDocBtn) {
+		delDocBtn.addEventListener('click', deleteDocument);
+	}
 
 	const confirmBtn = document.getElementById('confirm-btn');
-	if (confirmBtn) confirmBtn.addEventListener('click', confirmAction);
+	if (confirmBtn) {
+		confirmBtn.addEventListener('click', confirmAction);
+	}
 
 	// Carica dati esistenti dal server (se presenti)
 	try {
@@ -1011,7 +1055,9 @@ function executeDeleteRow(rowIndex, sheetName) {
 // Aggiorna lo stato del pulsante elimina riga
 function updateDeleteRowButtonState() {
 	const deleteRowBtn = document.getElementById('delete-row-btn');
-	if (!deleteRowBtn) return;
+	if (!deleteRowBtn) {
+		return;
+	}
 
 	const hasSelection = selectedCell !== null;
 	const canDelete = bypassMode && hasSelection && selectedCell && parseInt(selectedCell.dataset.row, 10) > 0;
@@ -1044,7 +1090,7 @@ function initializeDeleteRowButton() {
 
 // Funzione per mostrare la modal descrizione
 function showDescriptionModal(row, sheetName) {
-	descriptionModalData = { row, sheetName };
+	descriptionModalData = {row, sheetName};
 
 	const modal = document.getElementById('description-modal');
 	const input = document.getElementById('description-input');
@@ -1079,10 +1125,12 @@ function confirmDescription() {
 		}
 	}
 
-	const { row, sheetName } = descriptionModalData;
+	const {row, sheetName} = descriptionModalData;
 
 	// Inserisci la descrizione nella colonna C (index 2)
-	if (!data[sheetName][row]) data[sheetName][row] = [];
+	if (!data[sheetName][row]) {
+		data[sheetName][row] = [];
+	}
 	data[sheetName][row][2] = description;
 
 	// Aggiorna la cella visibile della colonna C se esiste
@@ -1112,14 +1160,14 @@ function setupDescriptionModalEvents() {
 	const cancelBtn = document.getElementById('description-cancel-btn');
 
 	// Chiudi modal cliccando fuori
-	window.addEventListener('click', function(event) {
+	window.addEventListener('click', function (event) {
 		if (event.target === modal) {
 			closeDescriptionModal();
 		}
 	});
 
 	// Gestione tasti nella modal
-	document.addEventListener('keydown', function(event) {
+	document.addEventListener('keydown', function (event) {
 		if (modal.style.display === 'block') {
 			if (event.key === 'Enter') {
 				event.preventDefault();
@@ -1132,12 +1180,16 @@ function setupDescriptionModalEvents() {
 	});
 
 	// Event listeners per i pulsanti
-	if (confirmBtn) confirmBtn.addEventListener('click', confirmDescription);
-	if (cancelBtn) cancelBtn.addEventListener('click', closeDescriptionModal);
+	if (confirmBtn) {
+		confirmBtn.addEventListener('click', confirmDescription);
+	}
+	if (cancelBtn) {
+		cancelBtn.addEventListener('click', closeDescriptionModal);
+	}
 
 	// Event listener per l'input (Enter per confermare)
 	if (input) {
-		input.addEventListener('keydown', function(event) {
+		input.addEventListener('keydown', function (event) {
 			if (event.key === 'Enter') {
 				event.preventDefault();
 				confirmDescription();
@@ -1153,11 +1205,15 @@ function initializeDescriptionModal() {
 
 // Funzione per estrarre mese e anno da una data italiana (gg/mm/aaaa)
 function getMonthYearFromDate(dateString) {
-	if (!dateString || typeof dateString !== 'string') return null;
+	if (!dateString || typeof dateString !== 'string') {
+		return null;
+	}
 
 	// Gestisce formato italiano gg/mm/aaaa
 	const parts = dateString.trim().split('/');
-	if (parts.length !== 3) return null;
+	if (parts.length !== 3) {
+		return null;
+	}
 
 	const day = parseInt(parts[0], 10);
 	const month = parseInt(parts[1], 10);
@@ -1186,7 +1242,9 @@ function getLastDayOfMonth(month, year) {
 // Funzione per controllare se una data è l'ultimo giorno del mese
 function isLastDayOfMonth(dateString) {
 	const dateInfo = getMonthYearFromDate(dateString);
-	if (!dateInfo) return false;
+	if (!dateInfo) {
+		return false;
+	}
 
 	const lastDay = getLastDayOfMonth(dateInfo.month, dateInfo.year);
 	return dateInfo.day === lastDay;
@@ -1194,7 +1252,9 @@ function isLastDayOfMonth(dateString) {
 
 // Funzione per trovare l'ultima riga con dati nell'intero foglio
 function findLastRowOfSheet(sheetName) {
-	if (!data[sheetName]) return -1;
+	if (!data[sheetName]) {
+		return -1;
+	}
 
 	const sheetData = data[sheetName];
 
@@ -1215,7 +1275,9 @@ function findLastRowOfSheet(sheetName) {
 
 // Funzione per calcolare il totale effettivo degli importi di un mese specifico
 function calculateMonthlyTotal(sheetName, targetMonthYear) {
-	if (!data[sheetName]) return 0;
+	if (!data[sheetName]) {
+		return 0;
+	}
 
 	const sheetData = data[sheetName];
 	let totalAmount = 0;
@@ -1227,11 +1289,15 @@ function calculateMonthlyTotal(sheetName, targetMonthYear) {
 		const amountCell = rowData[1]; // Colonna B (importo)
 
 		// Controlla se abbiamo sia data che importo
-		if (!dateCell || !amountCell) continue;
+		if (!dateCell || !amountCell) {
+			continue;
+		}
 
 		// Estrae mese/anno dalla data
 		const dateInfo = getMonthYearFromDate(dateCell);
-		if (!dateInfo || dateInfo.monthYear !== targetMonthYear) continue;
+		if (!dateInfo || dateInfo.monthYear !== targetMonthYear) {
+			continue;
+		}
 
 		// Converte l'importo in numero (gestisce sia formati grezzi che formattati)
 		const amount = parseEuroAmount(amountCell);
@@ -1261,7 +1327,9 @@ function updateCalculatedCell(row, col, value, tooltip) {
 
 // Funzione per calcolare la media degli importi di un mese specifico
 function calculateMonthlyAverage(sheetName, targetMonthYear) {
-	if (!data[sheetName]) return 0;
+	if (!data[sheetName]) {
+		return 0;
+	}
 
 	const sheetData = data[sheetName];
 
@@ -1273,28 +1341,40 @@ function calculateMonthlyAverage(sheetName, targetMonthYear) {
 		const dateCell = rowData[0]; // Colonna A (data)
 		const amountCell = rowData[1]; // Colonna B (importo)
 
-		if (!dateCell || !amountCell) continue;
+		if (!dateCell || !amountCell) {
+			continue;
+		}
 
 		// Verifica che la riga sia del mese/anno target
 		const dateInfo = getMonthYearFromDate(dateCell);
-		if (!dateInfo || dateInfo.monthYear !== targetMonthYear) continue;
+		if (!dateInfo || dateInfo.monthYear !== targetMonthYear) {
+			continue;
+		}
 
 		// Parse importo (es. "1.234,56" -> 1234.56)
 		const amount = parseEuroAmount(amountCell);
-		if (isNaN(amount)) continue;
+		if (isNaN(amount)) {
+			continue;
+		}
 
 		// Normalizza la data in chiave "YYYY-MM-DD" (locale)
 		const key = toLocalDateKey(dateCell);
-		if (!key) continue;
+		if (!key) {
+			continue;
+		}
 
 		perDay.set(key, (perDay.get(key) || 0) + amount);
 	}
 
-	if (perDay.size === 0) return 0;
+	if (perDay.size === 0) {
+		return 0;
+	}
 
 	// Media delle somme giornaliere (solo giorni con dati)
 	let totalOfDailyTotals = 0;
-	for (const v of perDay.values()) totalOfDailyTotals += v;
+	for (const v of perDay.values()) {
+		totalOfDailyTotals += v;
+	}
 
 	return totalOfDailyTotals / perDay.size;
 
@@ -1311,19 +1391,19 @@ function calculateMonthlyAverage(sheetName, targetMonthYear) {
 		// Se è stringa "dd/mm/yyyy"
 		if (typeof dateLike === "string" && dateLike.includes("/")) {
 			const [dd, mm, yy] = dateLike.split("/").map(s => parseInt(s, 10));
-			if (!dd || !mm || !yy) return null;
+			if (!dd || !mm || !yy) {
+				return null;
+			}
 			const y = yy < 100 ? (2000 + yy) : yy;
-			return `${String(y).padStart(4,"0")}-${String(mm).padStart(2,"0")}-${String(dd).padStart(2,"0")}`;
+			return `${String(y).padStart(4, "0")}-${String(mm).padStart(2, "0")}-${String(dd).padStart(2, "0")}`;
 		}
 
 		// Fallback: tenta il parsing standard
 		const d = new Date(dateLike);
-		if (isNaN(d)) return null;
-		const y = d.getFullYear();
-		const m = String(d.getMonth() + 1).padStart(2, "0");
-		const day = String(d.getDate()).padStart(2, "0");
-		//return `${y}-${m}-${day}`;
-		const [mm, yyyy] = targetMonthYear.split("/").map(n => parseInt(n,10)); // es. "08/2025"
+		if (isNaN(d)) {
+			return null;
+		}
+		const [mm, yyyy] = targetMonthYear.split("/").map(n => parseInt(n, 10)); // es. "08/2025"
 		const daysInMonth = new Date(yyyy, mm, 0).getDate();
 		return totalOfDailyTotals / daysInMonth;
 	}
@@ -1331,7 +1411,9 @@ function calculateMonthlyAverage(sheetName, targetMonthYear) {
 
 // Funzione per aggiornare le medie mensili secondo le due regole
 function updateAllMonthlyAverages(sheetName) {
-	if (!data[sheetName]) return;
+	if (!data[sheetName]) {
+		return;
+	}
 
 	const sheetData = data[sheetName];
 
@@ -1365,10 +1447,14 @@ function updateAllMonthlyAverages(sheetName) {
 		const dateCell = rowData[0];
 		const amountCell = rowData[1];
 
-		if (!dateCell || !amountCell) continue;
+		if (!dateCell || !amountCell) {
+			continue;
+		}
 
 		const dateInfo = getMonthYearFromDate(dateCell);
-		if (!dateInfo) continue;
+		if (!dateInfo) {
+			continue;
+		}
 
 		let shouldConsider = false;
 		let reason = '';
@@ -1410,7 +1496,7 @@ function updateAllMonthlyAverages(sheetName) {
 
 	// Seconda passata: applica i calcoli solo alle righe selezionate
 	monthCalculations.forEach((calc, monthYear) => {
-		const { row, reason, dateInfo } = calc;
+		const {row, reason, dateInfo} = calc;
 
 		const average = calculateMonthlyAverage(sheetName, monthYear);
 		const actualTotal = calculateMonthlyTotal(sheetName, monthYear);
@@ -1420,7 +1506,9 @@ function updateAllMonthlyAverages(sheetName) {
 			const daysInMonth = getLastDayOfMonth(dateInfo.month, dateInfo.year);
 			const estimatedTotal = average * daysInMonth;
 
-			if (!data[sheetName][row]) data[sheetName][row] = [];
+			if (!data[sheetName][row]) {
+				data[sheetName][row] = [];
+			}
 
 			// Colonna D (index 3): Media mensile
 			data[sheetName][row][3] = formatAsEuro(average);
@@ -1479,7 +1567,9 @@ function parseEuroAmount(formattedValue) {
 
 
 function formatAllExistingAmounts(sheetName) {
-	if (!data[sheetName]) return;
+	if (!data[sheetName]) {
+		return;
+	}
 
 	const sheetData = data[sheetName];
 	let formattedCount = 0;
@@ -1515,7 +1605,9 @@ function formatAllExistingAmounts(sheetName) {
 }
 
 function formatAllSheetsAmounts() {
-	if (!workbook) return;
+	if (!workbook) {
+		return;
+	}
 
 	workbook.SheetNames.forEach(sheetName => {
 		formatAllExistingAmounts(sheetName);
@@ -1526,7 +1618,9 @@ function formatAllSheetsAmounts() {
 
 // Funzione per contare le righe con dati reali (non vuote)
 function countDataRows(sheetName) {
-	if (!data[sheetName]) return 0;
+	if (!data[sheetName]) {
+		return 0;
+	}
 
 	const sheetData = data[sheetName];
 	let dataRows = 0;
@@ -1551,7 +1645,9 @@ function autoScrollToBottom(sheetName) {
 	// Se ci sono abbastanza righe, scrolla al fondo
 	if (dataRowsCount >= AUTO_SCROLL_THRESHOLD) {
 		const gridContainer = document.getElementById('spreadsheet-table').closest('.grid-container');
-		if (!gridContainer) return;
+		if (!gridContainer) {
+			return;
+		}
 
 		// Aspetta che la tabella sia completamente renderizzata
 		setTimeout(() => {

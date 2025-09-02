@@ -210,7 +210,7 @@ th {
     font-weight: bold;
     text-transform: uppercase;
     font-size: 14px;
-    letter-spacing: 0.5px;
+    letter-spacing: 1px;
     color: #495057 !important;
     text-align: center;
     border-bottom: 2px solid #adb5bd;

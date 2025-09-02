@@ -1,3 +1,6 @@
+Version 1.2.18
+- ccde optimization
+
 Version 1.2.17
 - fix calculation bug
 
