@@ -1,6 +1,6 @@
 # data.ods.adios.google
 
-Gestisce un file excel online, senza dipendere da google o microsoft, DB indipendente
+Gestisce un file excel online, senza dipendere da google o microsoft, DB indipendente; dopo il tag "liscio" è stato pesantemente personalizzato per un caso d'uso specifico.
 
 ## info
 
