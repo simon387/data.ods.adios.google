@@ -234,7 +234,7 @@ function displaySheet(sheetName) {
 	}
 
 	const sheetData = data[sheetName];
-	const maxCols = Math.max(6, ...sheetData.map(row => row.length || 0)); // MOSTRA SOLO 6 COLONNE, QUINDI FINO ALLA LETTERA F
+	const maxCols = Math.max(7, ...sheetData.map(row => row.length || 0)); // MOSTRA SOLO 6 COLONNE, QUINDI FINO ALLA LETTERA G
 	const maxRows = Math.max(64, sheetData.length + 10); // +10 righe vuote extra per comodità
 
 	// Crea header a due righe: lettere delle colonne + intestazioni dei dati
@@ -330,6 +330,10 @@ function isCellEditable(row, col, sheetName) {
 
 	if (col === 0) {
 		return false; // Colonna A (date) non modificabile in modalità normale
+	}
+
+	if (col === 6) {
+		return true; // Colonna note sempre modificabile in modalità bypass
 	}
 
 	// Controlla se è la prima riga vuota}
