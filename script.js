@@ -916,6 +916,7 @@ window.onload = async function () {
 		confirmBtn.addEventListener('click', confirmAction);
 	}
 
+	const tabsContainer = document.getElementById('sheet-tabs');
 	// Carica dati esistenti dal server (se presenti)
 	try {
 		const response = await fetch('excel_backend.php?action=load');
@@ -933,7 +934,6 @@ window.onload = async function () {
 			});
 
 			// Tabs
-			const tabsContainer = document.getElementById('sheet-tabs');
 			tabsContainer.innerHTML = '';
 			workbook.SheetNames.forEach((name, idx) => {
 				const tab = document.createElement('div');
@@ -954,7 +954,6 @@ window.onload = async function () {
 			workbook.SheetNames.push(defaultName);
 			workbook.Sheets[defaultName] = XLSX.utils.aoa_to_sheet([[]]);
 
-			const tabsContainer = document.getElementById('sheet-tabs');
 			tabsContainer.innerHTML = '';
 			const tab = document.createElement('div');
 			tab.className = 'sheet-tab active';
@@ -972,7 +971,6 @@ window.onload = async function () {
 		workbook.SheetNames.push(defaultName);
 		workbook.Sheets[defaultName] = XLSX.utils.aoa_to_sheet([[]]);
 
-		const tabsContainer = document.getElementById('sheet-tabs');
 		tabsContainer.innerHTML = '';
 		const tab = document.createElement('div');
 		tab.className = 'sheet-tab active';
@@ -992,6 +990,11 @@ window.onload = async function () {
 	setTimeout(() => {
 		recalculateAllAverages();
 	}, 500);
+
+	// Mostra tabs se non siamo in mobile
+	if (!isMobile()) {
+		tabsContainer.classList.remove('displaynone');
+	}
 };
 
 // Funzione per eliminare la riga della cella selezionata
