@@ -318,6 +318,10 @@ function selectCell(cell) {
 
 // Modifica la funzione isCellEditable per rispettare il bypass
 function isCellEditable(row, col, sheetName) {
+	// Prima della bypassMode, se non è la prima sheet puoi fare quello che vuoi
+	if (currentSheet !== 0) {
+		return true;
+	}
 	// Se è attiva la modalità bypass, TUTTE le celle sono modificabili (incluse le intestazioni)
 	if (bypassMode) {
 		return true; // Rimuovo la restrizione row !== 0
@@ -516,7 +520,7 @@ function isValidAmount(value) {
 // funzione applyEdit per rispettare il bypass nella validazione
 function applyEdit(sheetName, row, col, newValue, cell) {
 	// Validazione specifica per colonna B (importi) - SOLO se non in modalità bypass
-	if (!bypassMode && col === 1 && row > 0 && newValue.trim() !== '') {
+	if (!bypassMode && col === 1 && row > 0 && newValue.trim() !== '' && currentSheet === 0) {
 		if (!isValidAmount(newValue)) {
 			// Mostra errore e ripristina il valore precedente
 			showStatus('Errore: Inserire un importo valido (es: 123.45, 123,45, -50)', 'error');
@@ -550,7 +554,7 @@ function applyEdit(sheetName, row, col, newValue, cell) {
 
 	// Regola speciale: se sto inserendo nella colonna B (index 1) e non è la prima riga
 	// SOLO se non in modalità bypass
-	if (!bypassMode && col === 1 && row > 0 && newValue.trim() !== '') {
+	if (!bypassMode && col === 1 && row > 0 && newValue.trim() !== '' && currentSheet === 0) {
 		// Aggiungi la data attuale nella colonna A (index 0) della stessa riga
 		const today = new Date();
 		const formattedDate = today.toLocaleDateString('it-IT', {
@@ -581,7 +585,7 @@ function applyEdit(sheetName, row, col, newValue, cell) {
 	}
 
 	// Se cambiamo una data o un importo manualmente (anche in modalità bypass), aggiorna le medie
-	if (bypassMode && (isAmountChange || isDateChange)) {
+	if (bypassMode && (isAmountChange || isDateChange) && currentSheet === 0) {
 		setTimeout(() => {
 			updateAllMonthlyAverages(sheetName);
 		}, 100);
@@ -592,7 +596,7 @@ function applyEdit(sheetName, row, col, newValue, cell) {
 	cell.innerHTML = escapeHtml(newValue);
 
 	// Se abbiamo appena formattato un importo, assicuriamoci che la UI si aggiorni
-	if (!bypassMode && col === 1 && row > 0 && newValue.includes('€')) {
+	if (!bypassMode && col === 1 && row > 0 && newValue.includes('€') && currentSheet === 0) {
 		// Forza un refresh della cella per mostrare la formattazione
 		setTimeout(() => {
 			cell.innerHTML = escapeHtml(newValue);
