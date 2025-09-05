@@ -506,3 +506,80 @@ th {
         font-size: 1.2rem;
     }
 }
+
+/* ========== SHEET RENAME FUNCTIONALITY ========== */
+.sheet-tab.editing {
+    padding: 0 !important;
+    border: 2px solid #2c5aa0;
+    border-radius: 4px;
+    background: #fff;
+    box-shadow: 0 0 5px rgba(44, 90, 160, 0.3);
+}
+
+.sheet-name-input {
+    width: 100%;
+    min-width: 80px;
+    max-width: 200px;
+    font-family: inherit;
+    font-size: inherit;
+    font-weight: inherit;
+    text-align: center;
+    outline: none;
+    border: none;
+    background: transparent;
+    margin: 0;
+    padding: 8px 16px;
+    color: #333;
+}
+
+.sheet-name-input:focus {
+    background: #f8f9fa;
+}
+
+/* Indicatore visuale che il tab è modificabile (solo in bypass mode) */
+.sheet-tab:hover::after {
+    content: " ✏️";
+    font-size: 10px;
+    opacity: 0.7;
+    margin-left: 4px;
+    transition: opacity 0.2s;
+}
+
+.sheet-tab.editing:hover::after {
+    content: "";
+}
+
+/* Tooltip per suggerire il doppio click */
+.sheet-tab:hover::before {
+    content: "Doppio click per rinominare (solo in Modalità Libera)";
+    position: absolute;
+    bottom: calc(100% + 5px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.9);
+    color: white;
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-size: 11px;
+    white-space: nowrap;
+    z-index: 1002;
+    pointer-events: none;
+    opacity: 0;
+    animation: tooltipFadeIn 0.3s ease-in-out 0.8s forwards;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.sheet-tab.editing:hover::before {
+    content: "";
+}
+
+@keyframes tooltipFadeIn {
+    from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(5px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
+}

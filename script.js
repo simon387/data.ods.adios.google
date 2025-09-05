@@ -643,7 +643,14 @@ function createNewSheet() {
 	tab.className = 'sheet-tab';
 	tab.textContent = sheetName;
 	const newIndex = workbook.SheetNames.length - 1;
+
+	// Aggiungi i listener per click normale e doppio click
 	tab.addEventListener('click', () => switchSheet(newIndex, sheetName));
+	tab.addEventListener('dblclick', (e) => {
+		e.stopPropagation();
+		startEditingSheetName(tab, newIndex, sheetName);
+	});
+
 	tabsContainer.appendChild(tab);
 
 	switchSheet(newIndex, sheetName);
@@ -674,15 +681,16 @@ function executeDeleteSheet() {
 	}
 
 	// Ricostruisci tabs e vista
-	const tabsContainer = document.getElementById('sheet-tabs');
-	tabsContainer.innerHTML = '';
-	workbook.SheetNames.forEach((name, idx) => {
-		const tab = document.createElement('div');
-		tab.className = `sheet-tab ${idx === currentSheet ? 'active' : ''}`;
-		tab.textContent = name;
-		tab.addEventListener('click', () => switchSheet(idx, name));
-		tabsContainer.appendChild(tab);
-	});
+	// const tabsContainer = document.getElementById('sheet-tabs');
+	// tabsContainer.innerHTML = '';
+	// workbook.SheetNames.forEach((name, idx) => {
+	// 	const tab = document.createElement('div');
+	// 	tab.className = `sheet-tab ${idx === currentSheet ? 'active' : ''}`;
+	// 	tab.textContent = name;
+	// 	tab.addEventListener('click', () => switchSheet(idx, name));
+	// 	tabsContainer.appendChild(tab);
+	// });
+	rebuildSheetTabs();
 
 	displaySheet(workbook.SheetNames[currentSheet]);
 	updateButtonStates();
@@ -934,14 +942,15 @@ window.onload = async function () {
 			});
 
 			// Tabs
-			tabsContainer.innerHTML = '';
-			workbook.SheetNames.forEach((name, idx) => {
-				const tab = document.createElement('div');
-				tab.className = `sheet-tab ${idx === 0 ? 'active' : ''}`;
-				tab.textContent = name;
-				tab.addEventListener('click', () => switchSheet(idx, name));
-				tabsContainer.appendChild(tab);
-			});
+			// tabsContainer.innerHTML = '';
+			// workbook.SheetNames.forEach((name, idx) => {
+			// 	const tab = document.createElement('div');
+			// 	tab.className = `sheet-tab ${idx === 0 ? 'active' : ''}`;
+			// 	tab.textContent = name;
+			// 	tab.addEventListener('click', () => switchSheet(idx, name));
+			// 	tabsContainer.appendChild(tab);
+			// });
+			rebuildSheetTabs();
 
 			currentSheet = 0;
 			displaySheet(workbook.SheetNames[0]);
@@ -954,12 +963,13 @@ window.onload = async function () {
 			workbook.SheetNames.push(defaultName);
 			workbook.Sheets[defaultName] = XLSX.utils.aoa_to_sheet([[]]);
 
-			tabsContainer.innerHTML = '';
-			const tab = document.createElement('div');
-			tab.className = 'sheet-tab active';
-			tab.textContent = defaultName;
-			tab.addEventListener('click', () => switchSheet(0, defaultName));
-			tabsContainer.appendChild(tab);
+			// tabsContainer.innerHTML = '';
+			// const tab = document.createElement('div');
+			// tab.className = 'sheet-tab active';
+			// tab.textContent = defaultName;
+			// tab.addEventListener('click', () => switchSheet(0, defaultName));
+			// tabsContainer.appendChild(tab);
+			rebuildSheetTabs();
 
 			displaySheet(defaultName);
 		}
@@ -1677,4 +1687,185 @@ function autoScrollToBottom(sheetName) {
 	} else {
 		console.log(`Auto-scroll non necessario: solo ${dataRowsCount} righe (soglia: ${AUTO_SCROLL_THRESHOLD})`);
 	}
+}
+
+// Aggiungi queste funzioni al tuo script.js esistente
+
+// Variabile globale per gestire la modalità di editing dei nomi dei fogli
+let editingSheetTab = null;
+
+// Modifica la funzione switchSheet esistente per aggiungere il listener per doppio click
+// function switchSheet(index, sheetName) {
+// 	currentSheet = index;
+// 	document.querySelectorAll('.sheet-tab').forEach((tab, i) => {
+// 		tab.classList.toggle('active', i === index);
+// 	});
+// 	displaySheet(sheetName);
+// 	updateButtonStates();
+// }
+
+// Nuova funzione per iniziare l'editing del nome del foglio
+function startEditingSheetName(tabElement, index, currentName) {
+	// Evita editing multipli simultanei
+	if (editingSheetTab) {
+		return;
+	}
+
+	// Solo in modalità bypass o se non ci sono restrizioni
+	if (!bypassMode) {
+		showStatus('Rinomina fogli disponibile solo in Modalità Libera', 'error');
+		return;
+	}
+
+	editingSheetTab = {
+		element: tabElement,
+		index: index,
+		originalName: currentName
+	};
+
+	// Crea input per l'editing
+	const input = document.createElement('input');
+	input.type = 'text';
+	input.value = currentName;
+	input.className = 'sheet-name-input';
+	input.style.width = Math.max(100, currentName.length * 8 + 20) + 'px';
+	input.style.fontSize = '14px';
+	input.style.padding = '4px 8px';
+	input.style.border = '1px solid #007acc';
+	input.style.borderRadius = '4px';
+	input.style.background = '#fff';
+	input.style.color = '#333';
+	input.maxLength = 50; // Limite ragionevole per il nome del foglio
+
+	// Sostituisci il contenuto del tab con l'input
+	// const originalContent = tabElement.textContent;
+	tabElement.innerHTML = '';
+	tabElement.appendChild(input);
+	tabElement.classList.add('editing');
+
+	// Focus e selezione del testo
+	setTimeout(() => {
+		input.focus();
+		input.select();
+	}, 10);
+
+	// Gestione eventi input
+	const saveEdit = () => {
+		const newName = input.value.trim();
+		finishEditingSheetName(newName);
+	};
+
+	const cancelEdit = () => {
+		finishEditingSheetName(null); // null = cancella
+	};
+
+	// Event listeners
+	input.addEventListener('blur', saveEdit);
+	input.addEventListener('keydown', (e) => {
+		e.stopPropagation(); // Evita che interferisca con altri shortcuts
+		if (e.key === 'Enter') {
+			e.preventDefault();
+			saveEdit();
+		} else if (e.key === 'Escape') {
+			e.preventDefault();
+			cancelEdit();
+		}
+	});
+
+	// Previeni il click normale sul tab durante l'editing
+	tabElement.style.pointerEvents = 'none';
+}
+
+// Funzione per completare l'editing del nome del foglio
+function finishEditingSheetName(newName) {
+	if (!editingSheetTab) {
+		return;
+	}
+
+	const { element, index, originalName } = editingSheetTab;
+
+	// Ripristina il comportamento normale del tab
+	element.style.pointerEvents = '';
+	element.classList.remove('editing');
+
+	if (newName === null || newName === '' || newName === originalName) {
+		// Cancellato o nome uguale - ripristina il nome originale
+		element.textContent = originalName;
+		editingSheetTab = null;
+		return;
+	}
+
+	// Valida il nuovo nome
+	if (newName.length > 50) {
+		showStatus('Il nome del foglio non può superare i 50 caratteri', 'error');
+		element.textContent = originalName;
+		editingSheetTab = null;
+		return;
+	}
+
+	// Controlla che il nome non sia duplicato
+	const existingNames = workbook.SheetNames.filter((name, i) => i !== index);
+	if (existingNames.includes(newName)) {
+		showStatus(`Il nome "${newName}" è già utilizzato da un altro foglio`, 'error');
+		element.textContent = originalName;
+		editingSheetTab = null;
+		return;
+	}
+
+	// Applica il nuovo nome
+	try {
+		// Aggiorna workbook
+		const oldName = workbook.SheetNames[index];
+		workbook.SheetNames[index] = newName;
+
+		// Rinomina il foglio nell'oggetto workbook.Sheets
+		if (workbook.Sheets[oldName]) {
+			workbook.Sheets[newName] = workbook.Sheets[oldName];
+			delete workbook.Sheets[oldName];
+		}
+
+		// Aggiorna i dati
+		if (data[oldName]) {
+			data[newName] = data[oldName];
+			delete data[oldName];
+		}
+
+		// Aggiorna l'interfaccia
+		element.textContent = newName;
+
+		showStatus(`Foglio rinominato in "${newName}"`, 'success');
+
+		// Auto-save
+		setTimeout(() => saveData(), 500);
+
+	} catch (error) {
+		showStatus('Errore durante la rinomina: ' + error.message, 'error');
+		element.textContent = originalName;
+	}
+
+	editingSheetTab = null;
+}
+
+// Modifica la funzione createNewSheet esistente per aggiungere i listener
+
+
+// Aggiorna la funzione per ricostruire i tabs (usata in varie parti del codice)
+function rebuildSheetTabs() {
+	const tabsContainer = document.getElementById('sheet-tabs');
+	tabsContainer.innerHTML = '';
+
+	workbook.SheetNames.forEach((sheetName, idx) => {
+		const tab = document.createElement('div');
+		tab.className = `sheet-tab ${idx === currentSheet ? 'active' : ''}`;
+		tab.textContent = sheetName;
+
+		// Aggiungi i listener per click normale e doppio click
+		tab.addEventListener('click', () => switchSheet(idx, sheetName));
+		tab.addEventListener('dblclick', (e) => {
+			e.stopPropagation();
+			startEditingSheetName(tab, idx, sheetName);
+		});
+
+		tabsContainer.appendChild(tab);
+	});
 }
