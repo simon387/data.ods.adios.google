@@ -267,7 +267,7 @@ th {
 
 /* ========== COLUMN-SPECIFIC STYLES ========== */
 /* Colonna B (importi) - solo celle dati */
-.cell[data-col="1"] {
+.first-sheet-active .cell[data-col="1"] {
     text-align: right !important;
     font-family: 'Courier New', monospace;
     font-weight: 500;

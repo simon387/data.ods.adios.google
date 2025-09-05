@@ -3,16 +3,17 @@
 function getCurrentVersion(): string
 {
 	$changelogFile = 'changelog.txt';
+	$noVersion = 'No Version Found';
 
 	// Controlla se il file esiste
 	if (!file_exists($changelogFile)) {
-		return '1.0.0'; // Versione di fallback
+		return $noVersion;
 	}
 
 	// Legge il file
 	$content = file_get_contents($changelogFile);
 	if ($content === false) {
-		return '1.0.0'; // Versione di fallback
+		return $noVersion;
 	}
 
 	// Cerca la prima occorrenza di "Version X.X.X"
@@ -20,7 +21,7 @@ function getCurrentVersion(): string
 		return trim($matches[1]);
 	}
 
-	return '1.0.0'; // Versione di fallback
+	return $noVersion;
 }
 
 $currentVersion = getCurrentVersion();

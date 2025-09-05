@@ -213,14 +213,25 @@ function extractCellValues(worksheet) {
 }
 
 /* --------------------- Visualizzazione e interazione griglia --------------------- */
+// Supponendo che il contenitore abbia la classe 'spreadsheet'
 function switchSheet(index, sheetName) {
 	currentSheet = index;
 	document.querySelectorAll('.sheet-tab').forEach((tab, i) => {
 		tab.classList.toggle('active', i === index);
 	});
 	displaySheet(sheetName);
+	updateAllMonthlyAverages(sheetName);
 	updateButtonStates();
+
+	// Gestione classe per la prima sheet
+	const spreadsheet = document.querySelector('.spreadsheet');
+	if (index === 0) {
+		spreadsheet.classList.add('first-sheet-active');
+	} else {
+		spreadsheet.classList.remove('first-sheet-active');
+	}
 }
+
 
 function displaySheet(sheetName) {
 	const table = document.getElementById('spreadsheet-table');
@@ -892,42 +903,6 @@ document.addEventListener('keydown', function (event) {
 
 /* --------------------- Bootstrap all’avvio --------------------- */
 window.onload = async function () {
-	// Collega i pulsanti (se non già con onclick inline)
-	const fileInput = document.getElementById('file-upload');
-	if (fileInput) {
-		fileInput.addEventListener('change', loadFile);
-	}
-
-	const saveBtn = document.getElementById('save-btn');
-	if (saveBtn) {
-		saveBtn.addEventListener('click', saveData);
-	}
-
-	const exportBtn = Array.from(document.querySelectorAll('button')).find(b => b.textContent && b.textContent.includes('Esporta'));
-	if (exportBtn) {
-		exportBtn.addEventListener('click', exportExcel);
-	}
-
-	const newSheetBtn = Array.from(document.querySelectorAll('button')).find(b => b.textContent && b.textContent.includes('Nuovo Foglio'));
-	if (newSheetBtn) {
-		newSheetBtn.addEventListener('click', createNewSheet);
-	}
-
-	const delSheetBtn = document.getElementById('delete-sheet-btn');
-	if (delSheetBtn) {
-		delSheetBtn.addEventListener('click', deleteCurrentSheet);
-	}
-
-	const delDocBtn = document.getElementById('delete-doc-btn');
-	if (delDocBtn) {
-		delDocBtn.addEventListener('click', deleteDocument);
-	}
-
-	const confirmBtn = document.getElementById('confirm-btn');
-	if (confirmBtn) {
-		confirmBtn.addEventListener('click', confirmAction);
-	}
-
 	const tabsContainer = document.getElementById('sheet-tabs');
 	// Carica dati esistenti dal server (se presenti)
 	try {
@@ -946,14 +921,6 @@ window.onload = async function () {
 			});
 
 			// Tabs
-			// tabsContainer.innerHTML = '';
-			// workbook.SheetNames.forEach((name, idx) => {
-			// 	const tab = document.createElement('div');
-			// 	tab.className = `sheet-tab ${idx === 0 ? 'active' : ''}`;
-			// 	tab.textContent = name;
-			// 	tab.addEventListener('click', () => switchSheet(idx, name));
-			// 	tabsContainer.appendChild(tab);
-			// });
 			rebuildSheetTabs();
 
 			currentSheet = 0;
@@ -967,12 +934,6 @@ window.onload = async function () {
 			workbook.SheetNames.push(defaultName);
 			workbook.Sheets[defaultName] = XLSX.utils.aoa_to_sheet([[]]);
 
-			// tabsContainer.innerHTML = '';
-			// const tab = document.createElement('div');
-			// tab.className = 'sheet-tab active';
-			// tab.textContent = defaultName;
-			// tab.addEventListener('click', () => switchSheet(0, defaultName));
-			// tabsContainer.appendChild(tab);
 			rebuildSheetTabs();
 
 			displaySheet(defaultName);
