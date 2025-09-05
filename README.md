@@ -8,7 +8,9 @@ Gestisce un file excel online, senza dipendere da google o microsoft, DB indipen
 
 ## Config
 
-Prima riga: ```data	importo	causale	med mese	stima	totale	note```
+Prima riga primo sheet: ```data	importo	causale	med mese	stima	totale	note```;
+
+Secondo sheet fai quello che vuoi.
 
 
 ```Config.php```
