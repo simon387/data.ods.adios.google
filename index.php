@@ -54,14 +54,12 @@ $currentVersion = getCurrentVersion();
 <div class="container">
 	<div class="spreadsheet">
 		<div class="sheet-tabs displaynone" id="sheet-tabs">
-			<!-- I tab dei fogli verranno inseriti qui -->
 		</div>
 		<div class="grid-container">
 			<div id="loading" class="loading">
 				Carica un file Excel per iniziare o crea un nuovo foglio
 			</div>
 			<table id="spreadsheet-table" style="display: none;">
-				<!-- La tabella verrà generata dinamicamente -->
 			</table>
 		</div>
 	</div>

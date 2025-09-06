@@ -1,3 +1,16 @@
+/* --------------------- Variabili globali --------------------- */
+const STARTING_EDITABLE_ROW = 1; // Cambia questo numero per impostare da quale riga iniziare (0-based)
+const AUTO_SCROLL_THRESHOLD = 50; // Configurazione: da quante righe iniziare l'auto-scroll
+let workbook = null;
+let currentSheet = 0;
+let data = {}; // { sheetName: string[][] }
+let selectedCell = null;
+let documentId = null;
+let pendingAction = null;
+let bypassMode = false;
+let descriptionModalData = null; // Variabile per tenere traccia dei dati della modal descrizione
+let editingSheetTab = null; // Variabile globale per gestire la modalità di editing dei nomi dei fogli
+
 /* ---------- Cattura errori visibile (utile su mobile senza console) ---------- */
 window.addEventListener('error', function (e) {
 	try {
@@ -35,17 +48,90 @@ window.addEventListener('unhandledrejection', function (e) {
 	}
 });
 
-/* --------------------- Variabili globali --------------------- */
-let workbook = null;
-let currentSheet = 0;
-let data = {};              // { sheetName: string[][] }
-let selectedCell = null;
-let documentId = null;
-let pendingAction = null;
-const STARTING_EDITABLE_ROW = 1; // Cambia questo numero per impostare da quale riga iniziare (0-based)
-let bypassMode = false;
-let descriptionModalData = null; // Variabile per tenere traccia dei dati della modal descrizione
-const AUTO_SCROLL_THRESHOLD = 50; // Configurazione: da quante righe iniziare l'auto-scroll
+/* --------------------- Eventi globali pagina --------------------- */
+window.onclick = function (event) {
+	const modal = document.getElementById('confirm-modal');
+	if (event.target === modal) {
+		closeModal();
+	}
+};
+
+document.addEventListener('keydown', function (event) {
+	if (event.key === 'Escape') {
+		closeModal();
+	}
+}, {passive: true});
+
+/* --------------------- Bootstrap all’avvio --------------------- */
+window.onload = async function () {
+	const tabsContainer = document.getElementById('sheet-tabs');
+	// Carica dati esistenti dal server (se presenti)
+	try {
+		const response = await fetch('excel_backend.php?action=load');
+		const result = await response.json();
+
+		if (result.success && result.data) {
+			documentId = result.documentId || null;
+			data = result.data || {};
+
+			// Ricostruisci un workbook "vuoto" ma con i sheet
+			workbook = XLSX.utils.book_new();
+			result.sheetNames.forEach(sheetName => {
+				workbook.SheetNames.push(sheetName);
+				workbook.Sheets[sheetName] = XLSX.utils.aoa_to_sheet(data[sheetName] || [[]]);
+			});
+
+			// Tabs
+			rebuildSheetTabs();
+
+			currentSheet = 0;
+			displaySheet(workbook.SheetNames[0]);
+			showStatus('Dati caricati dal server', 'success');
+		} else {
+			// Nessun dato: prepara workbook nuovo con un foglio
+			workbook = XLSX.utils.book_new();
+			const defaultName = 'Foglio1';
+			data[defaultName] = [[]];
+			workbook.SheetNames.push(defaultName);
+			workbook.Sheets[defaultName] = XLSX.utils.aoa_to_sheet([[]]);
+
+			rebuildSheetTabs();
+
+			displaySheet(defaultName);
+		}
+	} catch (error) {
+		// In caso di errore di rete, crea un workbook nuovo
+		workbook = XLSX.utils.book_new();
+		const defaultName = 'Foglio1';
+		data[defaultName] = [[]];
+		workbook.SheetNames.push(defaultName);
+		workbook.Sheets[defaultName] = XLSX.utils.aoa_to_sheet([[]]);
+
+		tabsContainer.innerHTML = '';
+		const tab = document.createElement('div');
+		tab.className = 'sheet-tab active';
+		tab.textContent = defaultName;
+		tab.addEventListener('click', () => switchSheet(0, defaultName));
+		tabsContainer.appendChild(tab);
+
+		displaySheet(defaultName);
+	}
+
+	updateButtonStates();
+	initializeDescriptionModal();
+	initializeDeleteRowButton();
+	formatAllSheetsAmounts();
+
+	// Ricalcola tutte le medie dopo aver caricato i dati
+	setTimeout(() => {
+		recalculateAllAverages();
+	}, 500);
+
+	// Mostra tabs se non siamo in mobile
+	if (!isMobile()) {
+		tabsContainer.classList.remove('displaynone');
+	}
+};
 
 /* --------------------- Utility --------------------- */
 
@@ -95,7 +181,6 @@ function toggleBypassMode() {
 	// Aggiorna lo stato del pulsante elimina riga quando cambia la modalità
 	updateDeleteRowButtonState();
 }
-
 
 function isMobile() {
 	return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
@@ -231,7 +316,6 @@ function switchSheet(index, sheetName) {
 		spreadsheet.classList.remove('first-sheet-active');
 	}
 }
-
 
 function displaySheet(sheetName) {
 	const table = document.getElementById('spreadsheet-table');
@@ -887,91 +971,6 @@ function updateButtonStates() {
 	}
 }
 
-/* --------------------- Eventi globali pagina --------------------- */
-window.onclick = function (event) {
-	const modal = document.getElementById('confirm-modal');
-	if (event.target === modal) {
-		closeModal();
-	}
-};
-
-document.addEventListener('keydown', function (event) {
-	if (event.key === 'Escape') {
-		closeModal();
-	}
-}, {passive: true});
-
-/* --------------------- Bootstrap all’avvio --------------------- */
-window.onload = async function () {
-	const tabsContainer = document.getElementById('sheet-tabs');
-	// Carica dati esistenti dal server (se presenti)
-	try {
-		const response = await fetch('excel_backend.php?action=load');
-		const result = await response.json();
-
-		if (result.success && result.data) {
-			documentId = result.documentId || null;
-			data = result.data || {};
-
-			// Ricostruisci un workbook "vuoto" ma con i sheet
-			workbook = XLSX.utils.book_new();
-			result.sheetNames.forEach(sheetName => {
-				workbook.SheetNames.push(sheetName);
-				workbook.Sheets[sheetName] = XLSX.utils.aoa_to_sheet(data[sheetName] || [[]]);
-			});
-
-			// Tabs
-			rebuildSheetTabs();
-
-			currentSheet = 0;
-			displaySheet(workbook.SheetNames[0]);
-			showStatus('Dati caricati dal server', 'success');
-		} else {
-			// Nessun dato: prepara workbook nuovo con un foglio
-			workbook = XLSX.utils.book_new();
-			const defaultName = 'Foglio1';
-			data[defaultName] = [[]];
-			workbook.SheetNames.push(defaultName);
-			workbook.Sheets[defaultName] = XLSX.utils.aoa_to_sheet([[]]);
-
-			rebuildSheetTabs();
-
-			displaySheet(defaultName);
-		}
-	} catch (error) {
-		// In caso di errore di rete, crea un workbook nuovo
-		workbook = XLSX.utils.book_new();
-		const defaultName = 'Foglio1';
-		data[defaultName] = [[]];
-		workbook.SheetNames.push(defaultName);
-		workbook.Sheets[defaultName] = XLSX.utils.aoa_to_sheet([[]]);
-
-		tabsContainer.innerHTML = '';
-		const tab = document.createElement('div');
-		tab.className = 'sheet-tab active';
-		tab.textContent = defaultName;
-		tab.addEventListener('click', () => switchSheet(0, defaultName));
-		tabsContainer.appendChild(tab);
-
-		displaySheet(defaultName);
-	}
-
-	updateButtonStates();
-	initializeDescriptionModal();
-	initializeDeleteRowButton();
-	formatAllSheetsAmounts();
-
-	// Ricalcola tutte le medie dopo aver caricato i dati
-	setTimeout(() => {
-		recalculateAllAverages();
-	}, 500);
-
-	// Mostra tabs se non siamo in mobile
-	if (!isMobile()) {
-		tabsContainer.classList.remove('displaynone');
-	}
-};
-
 // Funzione per eliminare la riga della cella selezionata
 function deleteSelectedRow() {
 	if (!selectedCell) {
@@ -1291,7 +1290,6 @@ function calculateMonthlyTotal(sheetName, targetMonthYear) {
 	return totalAmount;
 }
 
-
 // Funzione helper per aggiornare una cella calcolata
 function updateCalculatedCell(row, col, value, tooltip) {
 	const cell = document.querySelector(`td.cell[data-row="${row}"][data-col="${col}"]`);
@@ -1515,7 +1513,6 @@ function updateAllMonthlyAverages(sheetName) {
 	});
 }
 
-
 // Funzione per formattare un numero come importo in euro
 function formatAsEuro(value) {
 	if (!value || value === '' || isNaN(parseFloat(String(value).replace(',', '.')))) {
@@ -1546,7 +1543,6 @@ function parseEuroAmount(formattedValue) {
 
 	return parseFloat(cleanValue) || 0;
 }
-
 
 function formatAllExistingAmounts(sheetName) {
 	if (!data[sheetName]) {
@@ -1653,21 +1649,6 @@ function autoScrollToBottom(sheetName) {
 		console.log(`Auto-scroll non necessario: solo ${dataRowsCount} righe (soglia: ${AUTO_SCROLL_THRESHOLD})`);
 	}
 }
-
-// Aggiungi queste funzioni al tuo script.js esistente
-
-// Variabile globale per gestire la modalità di editing dei nomi dei fogli
-let editingSheetTab = null;
-
-// Modifica la funzione switchSheet esistente per aggiungere il listener per doppio click
-// function switchSheet(index, sheetName) {
-// 	currentSheet = index;
-// 	document.querySelectorAll('.sheet-tab').forEach((tab, i) => {
-// 		tab.classList.toggle('active', i === index);
-// 	});
-// 	displaySheet(sheetName);
-// 	updateButtonStates();
-// }
 
 // Nuova funzione per iniziare l'editing del nome del foglio
 function startEditingSheetName(tabElement, index, currentName) {
@@ -1810,9 +1791,6 @@ function finishEditingSheetName(newName) {
 
 	editingSheetTab = null;
 }
-
-// Modifica la funzione createNewSheet esistente per aggiungere i listener
-
 
 // Aggiorna la funzione per ricostruire i tabs (usata in varie parti del codice)
 function rebuildSheetTabs() {

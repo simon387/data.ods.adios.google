@@ -1,4 +1,7 @@
 Version 1.3.3
+- js cleanup
+
+Version 1.3.3
 - changed btn ui order
 
 Version 1.3.2
