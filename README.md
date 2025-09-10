@@ -1,17 +1,13 @@
 # data.ods.adios.google
 
-Gestisce un file excel online, senza dipendere da google o microsoft, DB indipendente; dopo il tag "liscio" è stato pesantemente personalizzato per un caso d'uso specifico.
-
-## info
-
-+ nel ```index.html``` alcune funzioni sono commentate, è stato riadattato per un uso personale specifico.
+Gestisce un file excel online, senza dipendere da google o microsoft, DB indipendente; dopo il tag "liscio" è stato pesantemente personalizzato per un caso
+d'uso specifico.
 
 ## Config
 
 Prima riga primo sheet: ```data	importo	causale	med mese	stima	totale	note```;
 
 Secondo sheet fai quello che vuoi.
-
 
 ```Config.php```
 
