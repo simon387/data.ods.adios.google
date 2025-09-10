@@ -274,11 +274,6 @@ th {
     padding-right: 4px;
 }
 
-.cell[data-col="1"] input,
-.cell[data-col="1"][contenteditable] {
-    text-align: right !important;
-    font-family: 'Courier New', monospace;
-}
 
 /* Intestazione colonna B - mantiene stile header */
 .header-data-cell[data-col="1"] {

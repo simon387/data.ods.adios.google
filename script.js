@@ -549,7 +549,7 @@ function editCell(cell) {
 		input.style.fontSize = '14px';
 
 		// Se è colonna importi, mantieni l'allineamento a destra
-		if (col === 1) {
+		if (col === 1 && currentSheet === 0) {
 			input.style.textAlign = 'right';
 			input.style.fontFamily = "'Courier New', monospace";
 		}
@@ -689,6 +689,16 @@ function applyEdit(sheetName, row, col, newValue, cell) {
 	// Aggiorna UI (solo se non abbiamo già un input dentro)
 	//if (!cell.querySelector('input')) { aggiorniamo sempre perchè è buggato
 	cell.innerHTML = escapeHtml(newValue);
+
+	if (col === 1 && row > 0 && currentSheet === 0) { // per non perdere formattazione
+		if (!String(newValue).includes('€')) {
+			const formatted = formatAsEuro(newValue);
+			if (formatted) {
+				cell.innerHTML = escapeHtml(formatted);
+				data[sheetName][row][col] = formatted;
+			}
+		}
+	}
 
 	// Se abbiamo appena formattato un importo, assicuriamoci che la UI si aggiorni
 	if (!bypassMode && col === 1 && row > 0 && newValue.includes('€') && currentSheet === 0) {
