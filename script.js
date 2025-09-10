@@ -1399,22 +1399,24 @@ function calculateMonthlyAverage(sheetName, targetMonthYear) {
 	}
 }
 
-// Sostituisci temporaneamente updateAllMonthlyAverages con questa versione semplificata
-// per capire cosa sta realmente succedendo
 
 function updateAllMonthlyAverages(sheetName) {
-	console.log(`🔍 CHIAMATA updateAllMonthlyAverages per ${sheetName}`);
+	console.log(`CHIAMATA updateAllMonthlyAverages per ${sheetName}`);
 
 	if (!data[sheetName]) {
-		console.log('❌ Nessun dato, esco');
+		console.log('Nessun dato, esco');
 		return;
 	}
 
 	const sheetData = data[sheetName];
+	const lastRowOfSheet = findLastRowOfSheet(sheetName);
 
-	// NON cancelliamo nulla per ora, solo identifichiamo e applichiamo
-	console.log(`📊 Analizzando ${sheetData.length} righe...`);
+	// Identifica le righe che dovrebbero avere calcoli (solo UNA per mese + ultima riga)
+	const monthCalculations = new Map(); // monthYear -> row
 
+	console.log(`Analizzando ${sheetData.length} righe... Ultima riga: ${lastRowOfSheet + 1}`);
+
+	// Prima passata: trova la MIGLIORE riga per ogni mese
 	for (let row = 1; row < sheetData.length; row++) {
 		const rowData = sheetData[row] || [];
 		const dateCell = rowData[0];
@@ -1424,100 +1426,96 @@ function updateAllMonthlyAverages(sheetName) {
 			continue;
 		}
 
-		console.log(`🔍 Riga ${row + 1}: "${dateCell}" - "${amountCell}"`);
-
 		const dateInfo = getMonthYearFromDate(dateCell);
 		if (!dateInfo) {
-			console.log(`❌ Data non parsabile`);
 			continue;
 		}
 
-		// Verifica se è ultimo giorno del mese
+		// Verifica se è ultimo giorno del mese o ultima riga
 		const isLastDay = isLastDayOfMonth(dateCell);
-		console.log(`📅 Data parsata: ${dateInfo.day}/${dateInfo.month}/${dateInfo.year} - Ultimo giorno: ${isLastDay}`);
+		const isLastRow = (row === lastRowOfSheet);
 
-		// Se è ultimo giorno del mese, applica i calcoli
-		if (isLastDay) {
-			console.log(`✅ APPLICANDO calcoli per ultimo giorno del mese alla riga ${row + 1}`);
+		if (isLastDay || isLastRow) {
+			const existing = monthCalculations.get(dateInfo.monthYear);
+			let shouldUse = false;
 
-			const average = calculateMonthlyAverage(sheetName, dateInfo.monthYear);
-			const actualTotal = calculateMonthlyTotal(sheetName, dateInfo.monthYear);
+			if (!existing) {
+				// Primo candidato per questo mese
+				shouldUse = true;
+			} else {
+				// Priorità: ultimo giorno > ultima riga, e tra pari scegli la riga più in basso
+				const existingRow = existing.row;
+				const existingIsLastDay = existing.isLastDay;
 
-			console.log(`💰 Media: ${average}, Totale: ${actualTotal}`);
-
-			if (average > 0) {
-				const daysInMonth = getLastDayOfMonth(dateInfo.month, dateInfo.year);
-				const estimatedTotal = average * daysInMonth;
-
-				if (!data[sheetName][row]) {
-					data[sheetName][row] = [];
+				if (isLastDay && !existingIsLastDay) {
+					// Questo è ultimo giorno, l'esistente no
+					shouldUse = true;
+				} else if (isLastDay === existingIsLastDay && row > existingRow) {
+					// Stessa priorità, ma questa riga è più in basso
+					shouldUse = true;
 				}
+			}
 
-				// Applica i valori
-				data[sheetName][row][3] = formatAsEuro(average);
-				data[sheetName][row][4] = formatAsEuro(estimatedTotal);
-				data[sheetName][row][5] = formatAsEuro(actualTotal);
-
-				// Aggiorna UI
-				updateCalculatedCell(row, 3, data[sheetName][row][3], `Media mensile ${dateInfo.monthYear}`);
-				updateCalculatedCell(row, 4, data[sheetName][row][4], `Stima totale mensile ${dateInfo.monthYear}`);
-				updateCalculatedCell(row, 5, data[sheetName][row][5], `Totale effettivo mensile ${dateInfo.monthYear}`);
-
-				console.log(`✅ Calcoli applicati alla riga ${row + 1}:`);
-				console.log(`   Media: ${data[sheetName][row][3]}`);
-				console.log(`   Stima: ${data[sheetName][row][4]}`);
-				console.log(`   Totale: ${data[sheetName][row][5]}`);
+			if (shouldUse) {
+				monthCalculations.set(dateInfo.monthYear, {
+					row: row,
+					isLastDay: isLastDay,
+					isLastRow: isLastRow,
+					dateInfo: dateInfo
+				});
+				console.log(`Selezionata riga ${row + 1} per mese ${dateInfo.monthYear}`);
 			}
 		}
 	}
 
-	// Trova e gestisci l'ultima riga (logica originale)
-	const lastRowOfSheet = findLastRowOfSheet(sheetName);
-	console.log(`📍 Ultima riga del foglio: ${lastRowOfSheet + 1}`);
+	// NESSUNA CANCELLAZIONE - applica calcoli solo alle righe selezionate
+	monthCalculations.forEach((calc, monthYear) => {
+		const {row, isLastDay, isLastRow, dateInfo} = calc;
 
-	if (lastRowOfSheet > 0) {
-		const lastRowData = sheetData[lastRowOfSheet] || [];
-		const dateCell = lastRowData[0];
+		console.log(`Calcolando per riga ${row + 1}, mese ${monthYear}`);
 
-		if (dateCell) {
-			const dateInfo = getMonthYearFromDate(dateCell);
-			if (dateInfo) {
-				console.log(`✅ APPLICANDO calcoli per ultima riga (${lastRowOfSheet + 1})`);
+		const average = calculateMonthlyAverage(sheetName, monthYear);
+		const actualTotal = calculateMonthlyTotal(sheetName, monthYear);
 
-				const average = calculateMonthlyAverage(sheetName, dateInfo.monthYear);
-				const actualTotal = calculateMonthlyTotal(sheetName, dateInfo.monthYear);
+		console.log(`Media calcolata: ${average}, Totale: ${actualTotal}`);
 
-				if (average > 0) {
-					const daysInMonth = getLastDayOfMonth(dateInfo.month, dateInfo.year);
-					const estimatedTotal = average * daysInMonth;
+		if (average > 0) {
+			const daysInMonth = getLastDayOfMonth(dateInfo.month, dateInfo.year);
+			const estimatedTotal = average * daysInMonth;
 
-					if (!data[sheetName][lastRowOfSheet]) {
-						data[sheetName][lastRowOfSheet] = [];
-					}
-
-					// Applica i valori
-					data[sheetName][lastRowOfSheet][3] = formatAsEuro(average);
-					data[sheetName][lastRowOfSheet][4] = formatAsEuro(estimatedTotal);
-					data[sheetName][lastRowOfSheet][5] = formatAsEuro(actualTotal);
-
-					// Aggiorna UI
-					updateCalculatedCell(lastRowOfSheet, 3, data[sheetName][lastRowOfSheet][3], `Media mensile ${dateInfo.monthYear} - Ultima riga`);
-					updateCalculatedCell(lastRowOfSheet, 4, data[sheetName][lastRowOfSheet][4], `Stima totale mensile ${dateInfo.monthYear} - Ultima riga`);
-					updateCalculatedCell(lastRowOfSheet, 5, data[sheetName][lastRowOfSheet][5], `Totale effettivo mensile ${dateInfo.monthYear} - Ultima riga`);
-
-					console.log(`✅ Calcoli applicati all'ultima riga ${lastRowOfSheet + 1}:`);
-					console.log(`   Media: ${data[sheetName][lastRowOfSheet][3]}`);
-					console.log(`   Stima: ${data[sheetName][lastRowOfSheet][4]}`);
-					console.log(`   Totale: ${data[sheetName][lastRowOfSheet][5]}`);
-				}
+			if (!data[sheetName][row]) {
+				data[sheetName][row] = [];
 			}
-		}
-	}
 
-	console.log(`🏁 Fine elaborazione per ${sheetName}`);
+			// Applica i valori
+			data[sheetName][row][3] = formatAsEuro(average);
+			data[sheetName][row][4] = formatAsEuro(estimatedTotal);
+			data[sheetName][row][5] = formatAsEuro(actualTotal);
+
+			// Determina il motivo
+			let reason = '';
+			if (isLastDay && isLastRow) {
+				reason = `Ultimo giorno del mese + Ultima riga`;
+			} else if (isLastDay) {
+				reason = `Ultimo giorno del mese`;
+			} else {
+				reason = `Ultima riga del foglio`;
+			}
+
+			// Aggiorna UI
+			updateCalculatedCell(row, 3, data[sheetName][row][3], `Media mensile ${monthYear} - ${reason}`);
+			updateCalculatedCell(row, 4, data[sheetName][row][4], `Stima totale mensile ${monthYear} - ${reason}`);
+			updateCalculatedCell(row, 5, data[sheetName][row][5], `Totale effettivo mensile ${monthYear} - ${reason}`);
+
+			console.log(`Calcoli applicati alla riga ${row + 1} (${reason}):`);
+			console.log(`   Media: ${data[sheetName][row][3]}`);
+			console.log(`   Stima: ${data[sheetName][row][4]}`);
+			console.log(`   Totale: ${data[sheetName][row][5]}`);
+		}
+	});
+
+	console.log(`Fine elaborazione per ${sheetName}`);
 }
-
-// Rimossa la funzione ricorsiva che causava stack overflow
 
 // Funzione per formattare un numero come importo in euro
 function formatAsEuro(value) {
