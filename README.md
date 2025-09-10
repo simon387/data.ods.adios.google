@@ -38,5 +38,5 @@ class Config
 + ~~nascondere i fogli e mostrarli solo in modalità libera, come anche tutti i pulsanti che di default sono display: none~~
 + ~~nascondere i numeri riga e le lettere delle colonne in modalità non libera~~
 + ~~bug creazione nuovi fogli, ne crea uno in più, non è importante perchè si può eliminare, ma segnalo uguale~~
++ ~~bug calcoli~~
 + puoi ottimizzare e ripulire anche il js?
-+ bug calcoli

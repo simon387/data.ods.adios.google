@@ -1399,7 +1399,6 @@ function calculateMonthlyAverage(sheetName, targetMonthYear) {
 	}
 }
 
-
 function updateAllMonthlyAverages(sheetName) {
 	console.log(`CHIAMATA updateAllMonthlyAverages per ${sheetName}`);
 
@@ -1477,7 +1476,33 @@ function updateAllMonthlyAverages(sheetName) {
 		const average = calculateMonthlyAverage(sheetName, monthYear);
 		const actualTotal = calculateMonthlyTotal(sheetName, monthYear);
 
-		console.log(`Media calcolata: ${average}, Totale: ${actualTotal}`);
+		// DEBUG dettagliato per il calcolo della media
+		console.log(`=== DEBUG CALCOLO MEDIA per mese ${monthYear} ===`);
+		console.log(`Media restituita: ${average}`);
+		console.log(`Totale restituito: ${actualTotal}`);
+
+		// Verifica manuale dei dati per questo mese
+		let debugAmounts = [];
+		for (let debugRow = 1; debugRow < sheetData.length; debugRow++) {
+			const debugRowData = sheetData[debugRow] || [];
+			const debugDate = debugRowData[0];
+			const debugAmount = debugRowData[1];
+
+			if (debugDate && debugAmount) {
+				const debugDateInfo = getMonthYearFromDate(debugDate);
+				if (debugDateInfo && debugDateInfo.monthYear === monthYear) {
+					const parsedAmount = parseEuroAmount(debugAmount);
+					debugAmounts.push({date: debugDate, amount: debugAmount, parsed: parsedAmount});
+				}
+			}
+		}
+		console.log(`Importi trovati per ${monthYear}:`, debugAmounts);
+
+		// Calcolo manuale della media
+		const totalSum = debugAmounts.reduce((sum, item) => sum + item.parsed, 0);
+		const manualAverage = debugAmounts.length > 0 ? totalSum / debugAmounts.length : 0;
+		console.log(`Calcolo manuale: somma=${totalSum}, count=${debugAmounts.length}, media=${manualAverage}`);
+		console.log(`=== FINE DEBUG CALCOLO MEDIA ===`);
 
 		if (average > 0) {
 			const daysInMonth = getLastDayOfMonth(dateInfo.month, dateInfo.year);
