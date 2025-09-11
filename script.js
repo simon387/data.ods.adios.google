@@ -265,6 +265,7 @@ function loadFile(event) {
 			currentSheet = 0;
 			displaySheet(workbook.SheetNames[0]);
 			showStatus('File caricato con successo!', 'success');
+			setTimeout(() => saveData(), 500);
 			updateButtonStates();
 		} catch (error) {
 			showStatus('Errore nel caricamento del file: ' + error.message, 'error');
@@ -1434,13 +1435,17 @@ function updateAllMonthlyAverages(sheetName) {
 		const isLastDay = isLastDayOfMonth(dateCell);
 		const isLastRow = (row === lastRowOfSheet);
 
+		console.log(`Riga ${row + 1}: "${dateCell}" - Ultimo giorno: ${isLastDay}, Ultima riga: ${isLastRow} (lastRowOfSheet: ${lastRowOfSheet + 1})`);
+
 		if (isLastDay || isLastRow) {
 			const existing = monthCalculations.get(dateInfo.monthYear);
 			let shouldUse = false;
+			let reason = '';
 
 			if (!existing) {
 				// Primo candidato per questo mese
 				shouldUse = true;
+				reason = 'Primo candidato';
 			} else {
 				// Priorità: ultimo giorno > ultima riga, e tra pari scegli la riga più in basso
 				const existingRow = existing.row;
@@ -1449,25 +1454,65 @@ function updateAllMonthlyAverages(sheetName) {
 				if (isLastDay && !existingIsLastDay) {
 					// Questo è ultimo giorno, l'esistente no
 					shouldUse = true;
+					reason = 'Ultimo giorno batte ultima riga';
 				} else if (isLastDay === existingIsLastDay && row > existingRow) {
 					// Stessa priorità, ma questa riga è più in basso
 					shouldUse = true;
+					reason = 'Stessa priorità, riga più bassa';
+				} else {
+					reason = 'Scartata - priorità minore';
 				}
 			}
 
+			console.log(`   -> ${reason} ${shouldUse ? '✓ SELEZIONATA' : '✗ SCARTATA'}`);
+
 			if (shouldUse) {
+				if (existing) {
+					console.log(`   -> Sostituendo riga ${existing.row + 1} con riga ${row + 1} per mese ${dateInfo.monthYear}`);
+				}
 				monthCalculations.set(dateInfo.monthYear, {
 					row: row,
 					isLastDay: isLastDay,
 					isLastRow: isLastRow,
 					dateInfo: dateInfo
 				});
-				console.log(`Selezionata riga ${row + 1} per mese ${dateInfo.monthYear}`);
 			}
 		}
 	}
 
-	// NESSUNA CANCELLAZIONE - applica calcoli solo alle righe selezionate
+	// Identifica le righe che devono mantenere i calcoli
+	const rowsToKeep = new Set();
+	monthCalculations.forEach(calc => rowsToKeep.add(calc.row));
+
+	console.log(`Righe che manterranno i calcoli:`, Array.from(rowsToKeep).map(r => r + 1));
+
+	// Cancella SOLO i calcoli dalle righe che non dovrebbero averli
+	for (let row = 1; row < sheetData.length; row++) {
+		if (!rowsToKeep.has(row)) {
+			// Controlla se questa riga ha calcoli da cancellare
+			const hasCalculations = data[sheetName][row] &&
+				(data[sheetName][row][3] || data[sheetName][row][4] || data[sheetName][row][5]);
+
+			if (hasCalculations) {
+				console.log(`Cancellando calcoli vecchi dalla riga ${row + 1}`);
+				data[sheetName][row][3] = '';
+				data[sheetName][row][4] = '';
+				data[sheetName][row][5] = '';
+
+				// Pulisci anche l'UI
+				for (let col = 3; col <= 5; col++) {
+					const cell = document.querySelector(`td.cell[data-row="${row}"][data-col="${col}"]`);
+					if (cell) {
+						cell.innerHTML = '';
+						cell.classList.remove('calculated-cell', 'calculated-average', 'calculated-estimated', 'calculated-total');
+						cell.removeAttribute('title');
+					}
+				}
+			}
+		}
+	}
+
+	// NESSUNA CANCELLAZIONE delle righe da mantenere - applica calcoli solo alle righe selezionate
 	monthCalculations.forEach((calc, monthYear) => {
 		const {row, isLastDay, isLastRow, dateInfo} = calc;
 
@@ -1476,33 +1521,7 @@ function updateAllMonthlyAverages(sheetName) {
 		const average = calculateMonthlyAverage(sheetName, monthYear);
 		const actualTotal = calculateMonthlyTotal(sheetName, monthYear);
 
-		// DEBUG dettagliato per il calcolo della media
-		console.log(`=== DEBUG CALCOLO MEDIA per mese ${monthYear} ===`);
-		console.log(`Media restituita: ${average}`);
-		console.log(`Totale restituito: ${actualTotal}`);
-
-		// Verifica manuale dei dati per questo mese
-		let debugAmounts = [];
-		for (let debugRow = 1; debugRow < sheetData.length; debugRow++) {
-			const debugRowData = sheetData[debugRow] || [];
-			const debugDate = debugRowData[0];
-			const debugAmount = debugRowData[1];
-
-			if (debugDate && debugAmount) {
-				const debugDateInfo = getMonthYearFromDate(debugDate);
-				if (debugDateInfo && debugDateInfo.monthYear === monthYear) {
-					const parsedAmount = parseEuroAmount(debugAmount);
-					debugAmounts.push({date: debugDate, amount: debugAmount, parsed: parsedAmount});
-				}
-			}
-		}
-		console.log(`Importi trovati per ${monthYear}:`, debugAmounts);
-
-		// Calcolo manuale della media
-		const totalSum = debugAmounts.reduce((sum, item) => sum + item.parsed, 0);
-		const manualAverage = debugAmounts.length > 0 ? totalSum / debugAmounts.length : 0;
-		console.log(`Calcolo manuale: somma=${totalSum}, count=${debugAmounts.length}, media=${manualAverage}`);
-		console.log(`=== FINE DEBUG CALCOLO MEDIA ===`);
+		console.log(`Media calcolata: ${average}, Totale: ${actualTotal}`);
 
 		if (average > 0) {
 			const daysInMonth = getLastDayOfMonth(dateInfo.month, dateInfo.year);

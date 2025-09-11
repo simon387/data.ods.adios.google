@@ -39,4 +39,6 @@ class Config
 + ~~nascondere i numeri riga e le lettere delle colonne in modalità non libera~~
 + ~~bug creazione nuovi fogli, ne crea uno in più, non è importante perchè si può eliminare, ma segnalo uguale~~
 + ~~bug calcoli~~
++ ~~quando carichi l'excel non salva subito~~
++ ~~bug calcoli, ancora~~
 + puoi ottimizzare e ripulire anche il js?

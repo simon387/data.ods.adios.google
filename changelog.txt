@@ -1,5 +1,9 @@
+Version 1.3.7
+- fix other calculations bug
+- added autosave on import
+
 Version 1.3.6
-- fix bug calcolations
+- fix bug calculations
 
 Version 1.3.5
 - fix css sheet > 0 col B
