@@ -1367,7 +1367,8 @@ function calculateMonthlyAverage(sheetName, targetMonthYear) {
 		totalOfDailyTotals += v;
 	}
 
-	return totalOfDailyTotals / perDay.size;
+	//return totalOfDailyTotals / perDay.size;
+	return totalOfDailyTotals / parseInt([...perDay.keys()].pop().slice(-2));
 
 	// --- helper ---
 	function toLocalDateKey(dateLike) {
