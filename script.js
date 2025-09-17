@@ -1267,6 +1267,9 @@ function findLastRowOfSheet(sheetName) {
 
 // Funzione per calcolare il totale effettivo degli importi di un mese specifico
 function calculateMonthlyTotal(sheetName, targetMonthYear) {
+	if (currentSheet !== 0) {
+		return 0; // Solo per il primo foglio
+	}
 	if (!data[sheetName]) {
 		return 0;
 	}
@@ -1318,6 +1321,9 @@ function updateCalculatedCell(row, col, value, tooltip) {
 
 // Funzione per calcolare la media degli importi di un mese specifico
 function calculateMonthlyAverage(sheetName, targetMonthYear) {
+	if (currentSheet !== 0) {
+		return 0; // Solo per il primo foglio
+	}
 	if (!data[sheetName]) {
 		return 0;
 	}
@@ -1403,6 +1409,10 @@ function calculateMonthlyAverage(sheetName, targetMonthYear) {
 
 function updateAllMonthlyAverages(sheetName) {
 	console.log(`CHIAMATA updateAllMonthlyAverages per ${sheetName}`);
+	if (currentSheet !== 0) {
+		console.log('Non siamo nel foglio principale, esco');
+		return;
+	}
 
 	if (!data[sheetName]) {
 		console.log('Nessun dato, esco');
@@ -1632,6 +1642,9 @@ function formatAllExistingAmounts(sheetName) {
 }
 
 function formatAllSheetsAmounts() {
+	if (currentSheet !== 0) {
+		return;
+	}
 	if (!workbook) {
 		return;
 	}
