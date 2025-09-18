@@ -42,3 +42,4 @@ class Config
 + ~~quando carichi l'excel non salva subito~~
 + ~~bug calcoli, ancora~~
 + puoi ottimizzare e ripulire anche il js?
++ bug salvataggi su foglio job (!= 0)
