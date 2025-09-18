@@ -711,7 +711,7 @@ function applyEdit(sheetName, row, col, newValue, cell) {
 	//}
 
 	// Auto-save debounce (solo se non stiamo per mostrare la modal descrizione)
-	if (bypassMode || col !== 1 || row === 0 || newValue.trim() === '') {
+	if (bypassMode || currentSheet !== 0 || col !== 1 || row === 0 || newValue.trim() === '') {
 		clearTimeout(window.__saveTimeout);
 		window.__saveTimeout = setTimeout(() => saveData(), 800);
 	}
@@ -1306,6 +1306,9 @@ function calculateMonthlyTotal(sheetName, targetMonthYear) {
 
 // Funzione helper per aggiornare una cella calcolata
 function updateCalculatedCell(row, col, value, tooltip) {
+	if (currentSheet !== 0) {
+		return; // Solo per il primo foglio
+	}
 	const cell = document.querySelector(`td.cell[data-row="${row}"][data-col="${col}"]`);
 	if (cell) {
 		cell.innerHTML = escapeHtml(value);
@@ -1511,7 +1514,7 @@ function updateAllMonthlyAverages(sheetName) {
 				data[sheetName][row][5] = '';
 
 				// Pulisci anche l'UI
-				for (let col = 3; col <= 5; col++) {
+				for (let col = 3; col <= 5; col++) {debugger
 					const cell = document.querySelector(`td.cell[data-row="${row}"][data-col="${col}"]`);
 					if (cell) {
 						cell.innerHTML = '';
@@ -1604,6 +1607,9 @@ function parseEuroAmount(formattedValue) {
 }
 
 function formatAllExistingAmounts(sheetName) {
+	if (currentSheet !== 0) {
+		return;
+	}
 	if (!data[sheetName]) {
 		return;
 	}
