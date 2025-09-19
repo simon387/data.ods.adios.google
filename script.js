@@ -1502,6 +1502,10 @@ function updateAllMonthlyAverages(sheetName) {
 
 	// Cancella SOLO i calcoli dalle righe che non dovrebbero averli
 	for (let row = 1; row < sheetData.length; row++) {
+		if (sheetName === 'Job') {
+			//OCIO
+			continue; // Non toccare il foglio "Job"
+		}
 		if (!rowsToKeep.has(row)) {
 			// Controlla se questa riga ha calcoli da cancellare
 			const hasCalculations = data[sheetName][row] &&
@@ -1514,7 +1518,7 @@ function updateAllMonthlyAverages(sheetName) {
 				data[sheetName][row][5] = '';
 
 				// Pulisci anche l'UI
-				for (let col = 3; col <= 5; col++) {debugger
+				for (let col = 3; col <= 5; col++) {
 					const cell = document.querySelector(`td.cell[data-row="${row}"][data-col="${col}"]`);
 					if (cell) {
 						cell.innerHTML = '';
