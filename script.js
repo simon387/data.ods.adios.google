@@ -1408,7 +1408,14 @@ function calculateMonthlyAverage(sheetName, targetMonthYear) {
 	}
 
 	//return totalOfDailyTotals / perDay.size;
-	return totalOfDailyTotals / parseInt([...perDay.keys()].pop().slice(-2));
+	//return totalOfDailyTotals / parseInt([...perDay.keys()].pop().slice(-2)); // media contanto giorni del mese
+
+	// Estrai mese e anno dal targetMonthYear (es. "2024-09" -> mese=9, anno=2024)
+	const [month, year] = targetMonthYear.split('/').map(Number);
+	const daysInMonth = getLastDayOfMonth(month, year);
+
+	return totalOfDailyTotals / daysInMonth;
+// QUA FINISCE LA FUNZIONE
 
 	// --- helper ---
 	function toLocalDateKey(dateLike) {
