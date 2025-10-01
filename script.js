@@ -1354,7 +1354,7 @@ function updateCalculatedCell(row, col, value, tooltip) {
 }
 
 // Funzione per calcolare la media degli importi di un mese specifico
-function calculateMonthlyAverage(sheetName, targetMonthYear) {
+function calculateMonthlyAverage(sheetName, targetMonthYear, mode = false) {
 	if (currentSheet !== 0) {
 		return 0; // Solo per il primo foglio
 	}
@@ -1408,7 +1408,9 @@ function calculateMonthlyAverage(sheetName, targetMonthYear) {
 	}
 
 	//return totalOfDailyTotals / perDay.size;
-	//return totalOfDailyTotals / parseInt([...perDay.keys()].pop().slice(-2)); // media contanto giorni del mese
+	if (mode) {
+		return totalOfDailyTotals / parseInt([...perDay.keys()].pop().slice(-2)); // media contanto giorni del mese
+	}
 
 	// Estrai mese e anno dal targetMonthYear (es. "2024-09" -> mese=9, anno=2024)
 	const [month, year] = targetMonthYear.split('/').map(Number);
@@ -1581,7 +1583,7 @@ function updateAllMonthlyAverages(sheetName) {
 
 		if (average > 0) {
 			const daysInMonth = getLastDayOfMonth(dateInfo.month, dateInfo.year);
-			const estimatedTotal = average * daysInMonth;
+			const estimatedTotal = calculateMonthlyAverage(sheetName, monthYear, true) * daysInMonth;//average * daysInMonth;
 
 			if (!data[sheetName][row]) {
 				data[sheetName][row] = [];
@@ -1593,7 +1595,7 @@ function updateAllMonthlyAverages(sheetName) {
 			data[sheetName][row][5] = formatAsEuro(actualTotal);
 
 			// Determina il motivo
-			let reason = '';
+			let reason;
 			if (isLastDay && isLastRow) {
 				reason = `Ultimo giorno del mese + Ultima riga`;
 			} else if (isLastDay) {
