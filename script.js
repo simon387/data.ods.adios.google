@@ -1231,15 +1231,46 @@ function getLastDayOfMonth(month, year) {
 	return new Date(year, month, 0).getDate();
 }
 
-// Funzione per controllare se una data è l'ultimo giorno del mese
-function isLastDayOfMonth(dateString) {
+// Funzione per controllare se una riga è l'ultima del suo mese nei dati disponibili
+function isLastDayOfMonth(dateString, sheetName, currentRow) {
 	const dateInfo = getMonthYearFromDate(dateString);
 	if (!dateInfo) {
 		return false;
 	}
 
-	const lastDay = getLastDayOfMonth(dateInfo.month, dateInfo.year);
-	return dateInfo.day === lastDay;
+	const sheetData = data[sheetName];
+	if (!sheetData) {
+		return false;
+	}
+
+	// Trova l'ultima riga con una data dello stesso mese/anno
+	let lastRowOfMonth = currentRow;
+
+	for (let row = currentRow + 1; row < sheetData.length; row++) {
+		const rowData = sheetData[row] || [];
+		const nextDateCell = rowData[0];
+
+		if (!nextDateCell) {
+			continue;
+		}
+
+		const nextDateInfo = getMonthYearFromDate(nextDateCell);
+		if (!nextDateInfo) {
+			continue;
+		}
+
+		// Se stessa combinazione mese/anno, aggiorna l'ultima riga
+		if (nextDateInfo.month === dateInfo.month &&
+			nextDateInfo.year === dateInfo.year) {
+			lastRowOfMonth = row;
+		} else {
+			// Appena troviamo un mese diverso, usciamo
+			break;
+		}
+	}
+
+	// Ritorna true solo se siamo nell'ultima riga disponibile per questo mese
+	return currentRow === lastRowOfMonth;
 }
 
 // Funzione per trovare l'ultima riga con dati nell'intero foglio
@@ -1446,7 +1477,7 @@ function updateAllMonthlyAverages(sheetName) {
 		}
 
 		// Verifica se è ultimo giorno del mese o ultima riga
-		const isLastDay = isLastDayOfMonth(dateCell);
+		const isLastDay = isLastDayOfMonth(dateCell, sheetName, row);
 		const isLastRow = (row === lastRowOfSheet);
 
 		console.log(`Riga ${row + 1}: "${dateCell}" - Ultimo giorno: ${isLastDay}, Ultima riga: ${isLastRow} (lastRowOfSheet: ${lastRowOfSheet + 1})`);
