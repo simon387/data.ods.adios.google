@@ -135,7 +135,7 @@ window.onload = async function () {
 
 /* --------------------- Utility --------------------- */
 
-// Funzione per togglere il bypass mode
+// Funzione per togliere il bypass mode
 function toggleBypassMode() {
 	bypassMode = !bypassMode;
 	const bypassBtn = document.getElementById('bypass-btn');
@@ -372,7 +372,9 @@ function displaySheet(sheetName) {
 	attachCellListeners(table);
 
 	// Auto-scroll al fondo se ci sono molte righe
-	autoScrollToBottom(sheetName);
+	if ( currentSheet < 2 ) {
+		autoScrollToBottom(sheetName);
+	}
 }
 
 function escapeHtml(s) {
@@ -851,6 +853,7 @@ async function executeDeleteDocument() {
 /* --------------------- Salvataggio / Esportazione --------------------- */
 async function saveData() {
 	if (!workbook || Object.keys(data).length === 0) {
+		console.log('❌ Nessun dato da salvare');
 		showStatus('Nessun dato da salvare', 'error');
 		return;
 	}
@@ -862,28 +865,36 @@ async function saveData() {
 			saveBtn.disabled = true;
 		}
 
+		const payload = {
+			action: 'save',
+			documentId,
+			data,
+			sheetNames: workbook.SheetNames
+		};
+		console.log('📤 Payload inviato al server:', payload);
+
 		const response = await fetch('excel_backend.php', {
 			method: 'POST',
 			headers: {'Content-Type': 'application/json'},
-			body: JSON.stringify({
-				action: 'save',
-				documentId,
-				data,
-				sheetNames: workbook.SheetNames
-			})
+			body: JSON.stringify(payload)
 		});
 
+		console.log('📥 Response status:', response.status);
 		const result = await response.json();
+		console.log('📥 Response parsed:', result);
+
 		if (result.success) {
-			if (!documentId) {
-				documentId = result.documentId;
-			}
+			// ⭐ AGGIORNA IL DOCUMENT ID CON QUELLO NUOVO
+			documentId = result.documentId;
+			console.log('✅ DocumentId aggiornato a:', documentId);
+
 			showStatus('Dati salvati con successo!', 'success');
 			updateButtonStates();
 		} else {
 			showStatus('Errore nel salvataggio: ' + result.message, 'error');
 		}
 	} catch (error) {
+		console.error('❌ Errore in saveData:', error);
 		showStatus('Errore di connessione: ' + error.message, 'error');
 	} finally {
 		const saveBtn = document.getElementById('save-btn');
