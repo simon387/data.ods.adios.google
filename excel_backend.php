@@ -165,8 +165,8 @@ class ExcelDatabase {
 			$this->pdo->beginTransaction();
 
 			if ($documentId) {
-				// Carica il documento esistente per ottenere il titolo base
-				$stmt = $this->pdo->prepare("SELECT title, version FROM excel_documents WHERE id = ?");
+				// ⭐ MODIFICA: Aggiorna il documento esistente invece di creare una nuova versione
+				$stmt = $this->pdo->prepare("SELECT title FROM excel_documents WHERE id = ?");
 				$stmt->execute([$documentId]);
 				$existingDoc = $stmt->fetch();
 
@@ -174,17 +174,16 @@ class ExcelDatabase {
 					throw new Exception("Documento non trovato");
 				}
 
-				$baseTitle = $title ?: $existingDoc['title'];
-				$nextVersion = $existingDoc['version'] + 1;
-
-				// Marca il documento corrente come non più attuale
-				$stmt = $this->pdo->prepare("UPDATE excel_documents SET is_current = FALSE WHERE id = ?");
+				// Aggiorna solo il timestamp
+				$stmt = $this->pdo->prepare("UPDATE excel_documents SET updated_at = CURRENT_TIMESTAMP WHERE id = ?");
 				$stmt->execute([$documentId]);
 
-				// Crea una nuova versione
-				$stmt = $this->pdo->prepare("INSERT INTO excel_documents (title, version, is_current) VALUES (?, ?, TRUE)");
-				$stmt->execute([$baseTitle, $nextVersion]);
-				$newDocumentId = $this->pdo->lastInsertId();
+				// Elimina i vecchi fogli e celle per questo documento
+				$stmt = $this->pdo->prepare("DELETE FROM excel_sheets WHERE document_id = ?");
+				$stmt->execute([$documentId]);
+				// Le celle vengono eliminate automaticamente tramite CASCADE
+
+				$newDocumentId = $documentId; // ⭐ USA LO STESSO ID
 
 			} else {
 				// Nuovo documento
@@ -194,7 +193,7 @@ class ExcelDatabase {
 				$newDocumentId = $this->pdo->lastInsertId();
 			}
 
-			// Salva i fogli nella nuova versione
+			// Salva i fogli nella nuova/esistente versione
 			foreach ($sheetNames as $order => $sheetName) {
 				$stmt = $this->pdo->prepare("INSERT INTO excel_sheets (document_id, sheet_name, sheet_order) VALUES (?, ?, ?)");
 				$stmt->execute([$newDocumentId, $sheetName, $order]);
@@ -217,15 +216,27 @@ class ExcelDatabase {
 
 	private function saveCells($sheetId, $sheetData) {
 		$stmt = $this->pdo->prepare("
-            INSERT INTO excel_cells (sheet_id, row_index, col_index, cell_value, cell_type) 
-            VALUES (?, ?, ?, ?, ?)
-        ");
+        INSERT INTO excel_cells (sheet_id, row_index, col_index, cell_value, cell_type) 
+        VALUES (?, ?, ?, ?, ?)
+    ");
 
 		foreach ($sheetData as $rowIndex => $row) {
 			if (is_array($row)) {
+				// ⭐ Trova l'ultima colonna con dati in questa riga
+				$lastColWithData = -1;
 				foreach ($row as $colIndex => $cellValue) {
 					if ($cellValue !== null && $cellValue !== '') {
+						$lastColWithData = max($lastColWithData, $colIndex);
+					}
+				}
+
+				// ⭐ Salva TUTTE le celle fino all'ultima con dati (incluse quelle vuote in mezzo)
+				if ($lastColWithData >= 0) {
+					for ($colIndex = 0; $colIndex <= $lastColWithData; $colIndex++) {
+						$cellValue = isset($row[$colIndex]) ? $row[$colIndex] : '';
 						$cellType = $this->detectCellType($cellValue);
+
+						// Salva anche le celle vuote se sono prima di celle con dati
 						$stmt->execute([$sheetId, $rowIndex, $colIndex, $cellValue, $cellType]);
 					}
 				}
@@ -305,6 +316,7 @@ class ExcelDatabase {
 
 			$data = [];
 			$sheetNames = [];
+			$debugInfo = []; // ⭐ AGGIUNGI QUESTO
 
 			foreach ($sheets as $sheet) {
 				$sheetNames[] = $sheet['sheet_name'];
@@ -316,7 +328,8 @@ class ExcelDatabase {
 				'documentId' => $documentId,
 				'title' => $docInfo['title'],
 				'data' => $data,
-				'sheetNames' => $sheetNames
+				'sheetNames' => $sheetNames,
+				'debug' => $debugInfo // ⭐ AGGIUNGI QUESTO
 			];
 
 			// Aggiungi campi versioning solo se esistono
@@ -336,35 +349,61 @@ class ExcelDatabase {
 
 	private function loadSheetData($sheetId) {
 		$stmt = $this->pdo->prepare("
-            SELECT row_index, col_index, cell_value 
-            FROM excel_cells 
-            WHERE sheet_id = ? AND cell_value IS NOT NULL AND cell_value != ''
-            ORDER BY row_index, col_index
-        ");
+        SELECT row_index, col_index, cell_value 
+        FROM excel_cells 
+        WHERE sheet_id = ?
+        ORDER BY row_index, col_index
+    ");
 		$stmt->execute([$sheetId]);
 		$cells = $stmt->fetchAll();
 
-		$sheetData = [];
-		foreach ($cells as $cell) {
-			$sheetData[$cell['row_index']][$cell['col_index']] = $cell['cell_value'];
+		if (empty($cells)) {
+			return [];
 		}
 
-		// Converti in array indicizzato per compatibilità con SheetJS
-		$maxRow = empty($sheetData) ? 0 : max(array_keys($sheetData));
-		$result = [];
+		// Trova il massimo row_index e col_index
+		$maxRow = 0;
+		$maxColPerRow = [];
+
+		foreach ($cells as $cell) {
+			$maxRow = max($maxRow, $cell['row_index']);
+			if (!isset($maxColPerRow[$cell['row_index']])) {
+				$maxColPerRow[$cell['row_index']] = 0;
+			}
+			$maxColPerRow[$cell['row_index']] = max(
+				$maxColPerRow[$cell['row_index']],
+				$cell['col_index']
+			);
+		}
+
+		// ⭐ MODIFICA: Riempi TUTTE le celle, anche quelle vuote
+		$sheetData = [];
 
 		for ($row = 0; $row <= $maxRow; $row++) {
+			$maxCol = isset($maxColPerRow[$row]) ? $maxColPerRow[$row] : 0;
 			$rowData = [];
-			if (isset($sheetData[$row])) {
-				$maxCol = max(array_keys($sheetData[$row]));
-				for ($col = 0; $col <= $maxCol; $col++) {
-					$rowData[$col] = isset($sheetData[$row][$col]) ? $sheetData[$row][$col] : '';
+
+			for ($col = 0; $col <= $maxCol; $col++) {
+				// Trova la cella nel database
+				$found = false;
+				foreach ($cells as $cell) {
+					if ($cell['row_index'] == $row && $cell['col_index'] == $col) {
+						$rowData[$col] = $cell['cell_value'];
+						$found = true;
+						break;
+					}
+				}
+
+				// ⭐ Se la cella non esiste, metti stringa vuota
+				if (!$found) {
+					$rowData[$col] = '';
 				}
 			}
-			$result[$row] = $rowData;
+
+			$sheetData[$row] = $rowData;
 		}
 
-		return $result;
+		return $sheetData;
 	}
 
 	public function getDocumentsList($includeVersions = false) {

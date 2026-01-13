@@ -1,3 +1,7 @@
+Version 1.3.17
++ fixed autoscroll
++ added useless code, saveData() still bugged on sheet "crediti"
+
 Version 1.3.16
 - fixed comment
 - changed saveData() function to prevent data loss (no tested)

@@ -69,6 +69,24 @@ window.onload = async function () {
 	try {
 		const response = await fetch('excel_backend.php?action=load');
 		const result = await response.json();
+		console.log('📥 Debug info dal server:', result.debug);
+
+		// ⭐ AGGIUNGI QUESTO LOG DETTAGLIATO
+		console.log('📥 Dati caricati dal server:', result);
+		console.log('📥 documentId:', result.documentId);
+		console.log('📥 sheetNames:', result.sheetNames);
+		console.log('📥 data keys:', Object.keys(result.data || {}));
+
+		// Log dettagliato per ogni sheet
+		if (result.data) {
+			Object.keys(result.data).forEach(sheetName => {
+				const rows = result.data[sheetName].length;
+				console.log(`📄 Sheet "${sheetName}": ${rows} righe`);
+				if (rows > 0 && rows < 10) {
+					console.log(`   Dati:`, result.data[sheetName]);
+				}
+			});
+		}
 
 		if (result.success && result.data) {
 			documentId = result.documentId || null;
@@ -131,6 +149,7 @@ window.onload = async function () {
 	if (!isMobile()) {
 		tabsContainer.classList.remove('displaynone');
 	}
+
 };
 
 /* --------------------- Utility --------------------- */
@@ -315,6 +334,21 @@ function switchSheet(index, sheetName) {
 		spreadsheet.classList.add('first-sheet-active');
 	} else {
 		spreadsheet.classList.remove('first-sheet-active');
+	}
+
+	// ⭐ NUOVO: Scroll in alto per le sheet dalla 2 in poi (indice >= 2)
+	if (index >= 2) {
+		const gridContainer = document.getElementById('spreadsheet-table').closest('.grid-container');
+		if (gridContainer) {
+			// Aspetta che la tabella sia renderizzata
+			setTimeout(() => {
+				gridContainer.scrollTo({
+					top: 0,
+					behavior: 'smooth' // Scroll animato
+				});
+				console.log(`📍 Auto-scroll in alto per sheet "${sheetName}" (indice ${index})`);
+			}, 100);
+		}
 	}
 }
 
@@ -872,6 +906,10 @@ async function saveData() {
 			sheetNames: workbook.SheetNames
 		};
 		console.log('📤 Payload inviato al server:', payload);
+
+		// ⭐ AGGIUNGI QUESTO LOG SPECIFICO
+		console.log('📤 Dati Crediti inviati:', payload.data['Crediti']);
+		console.log('📤 Riga 7 Crediti:', payload.data['Crediti'][7]);
 
 		const response = await fetch('excel_backend.php', {
 			method: 'POST',
